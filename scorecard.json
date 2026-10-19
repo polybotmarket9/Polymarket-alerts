@@ -155,5 +155,17 @@
   "cat": "politics",
   "us": "pres-fra-2027-04-11",
   "score": 53
+ },
+ {
+  "t": 1792415010,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.72,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 28
  }
 ]
