@@ -7,7 +7,8 @@
   "side": "Cowboys",
   "price": 0.64,
   "strength": "strong",
-  "cat": "sports"
+  "cat": "sports",
+  "result": "won"
  },
  {
   "t": 1792381183,
@@ -78,5 +79,60 @@
   "price": 0.275,
   "strength": "weak",
   "cat": "politics"
+ },
+ {
+  "t": 1792382478,
+  "cid": "0xb188e013be53f0c1f709ba85bc9a87727d4c676f493a922aed392d7454aee524",
+  "title": "Ningbo Open: Elise Mertens vs Leylah Fernandez",
+  "slug": "wta-mertens-fernand-2026-10-18",
+  "side": "Elise Mertens",
+  "price": 0.5794,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "wta-elimer-leyfer-2026-10-19"
+ },
+ {
+  "t": 1792382478,
+  "cid": "0xb188e013be53f0c1f709ba85bc9a87727d4c676f493a922aed392d7454aee524",
+  "title": "Ningbo Open: Elise Mertens vs Leylah Fernandez",
+  "slug": "wta-mertens-fernand-2026-10-18",
+  "side": "Elise Mertens",
+  "price": 0.5572,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "wta-elimer-leyfer-2026-10-19"
+ },
+ {
+  "t": 1792382478,
+  "cid": "0xb188e013be53f0c1f709ba85bc9a87727d4c676f493a922aed392d7454aee524",
+  "title": "Ningbo Open: Elise Mertens vs Leylah Fernandez",
+  "slug": "wta-mertens-fernand-2026-10-18",
+  "side": "Elise Mertens",
+  "price": 0.578,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "wta-elimer-leyfer-2026-10-19"
+ },
+ {
+  "t": 1792382729,
+  "cid": "0xb188e013be53f0c1f709ba85bc9a87727d4c676f493a922aed392d7454aee524",
+  "title": "Ningbo Open: Elise Mertens vs Leylah Fernandez",
+  "slug": "wta-mertens-fernand-2026-10-18",
+  "side": "Leylah Fernandez",
+  "price": 0.44,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "wta-elimer-leyfer-2026-10-19"
+ },
+ {
+  "t": 1792383339,
+  "cid": "0xb188e013be53f0c1f709ba85bc9a87727d4c676f493a922aed392d7454aee524",
+  "title": "Ningbo Open: Elise Mertens vs Leylah Fernandez",
+  "slug": "wta-mertens-fernand-2026-10-18",
+  "side": "Elise Mertens",
+  "price": 0.66,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "wta-elimer-leyfer-2026-10-19"
  }
 ]
