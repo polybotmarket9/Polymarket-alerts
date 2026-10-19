@@ -1,0 +1,40 @@
+name: API probe (temporary)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          cat > p.py <<'PY'
+          import json, urllib.request, urllib.parse
+          def get(u):
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "probe"}), timeout=20) as r:
+                      return r.status, r.read().decode()
+              except Exception as e:
+                  return getattr(e, "code", "ERR"), str(e)[:200]
+          G = "https://gateway.polymarket.us"
+          for path in ["/v1/markets?limit=2&active=true", "/v1/events?limit=1&active=true"]:
+              code, body = get(G + path)
+              print("===", path, code); print(body[:2500])
+          code, body = get(G + "/v1/markets?limit=200&active=true&closed=false")
+          try:
+              d = json.loads(body); ms = d.get("markets", d) if isinstance(d, dict) else d
+              print("count", len(ms)); print("keys", sorted(ms[0].keys()))
+              cats = {}
+              for m in ms: cats[m.get("category")] = cats.get(m.get("category"), 0) + 1
+              print("categories", cats)
+              for m in ms[:8]: print(m.get("slug"), "|", m.get("question"), "|", m.get("questionID") or m.get("questionId"), "|", m.get("category"))
+          except Exception as e:
+              print("parse fail", e, body[:300])
+          # does a .com sports market's questionID match?
+          code, body = get("https://gamma-api.polymarket.com/markets?limit=5&active=true&closed=false&tag_slug=nfl&order=volume24hr&ascending=false")
+          for m in json.loads(body)[:3]:
+              q = m.get("questionID"); print("com:", m.get("slug"), q)
+              c2, b2 = get(G + "/v1/markets?questionIds=" + urllib.parse.quote(q or ""))
+              print("  us match:", c2, b2[:300])
+          for u in ["https://polymarket.us/", "https://polymarket.us/market/" + (ms[0].get("slug") if ms else "x"), "https://polymarket.us/event/" + (ms[0].get("slug") if ms else "x")]:
+              print("page", u, get(u)[0])
+          PY
+          python3 p.py
