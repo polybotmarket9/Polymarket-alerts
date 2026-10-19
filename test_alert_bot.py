@@ -52,6 +52,7 @@ class Tests(unittest.TestCase):
     def setUp(self):
         self.cfg = ab.Config()
         self.cfg.us_only = False
+        self.cfg.big_bets_only = False
         self.markets = ab.fetch_markets(self.cfg, get=fake_get)
 
     def test_markets_skip_up_or_down(self):
@@ -318,6 +319,15 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $200,000 by December 31, 2026?", "Yes"))
         self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $150,000 by March 31, 2026?", "Yes"))
         self.assertIsNone(ab.match_us(cat, "x", "Will Ethereum flip Bitcoin in 2026?", "Yes"))
+
+    def test_big_bets_only(self):
+        self.cfg.big_bets_only = True
+        small = ab.check_trades(self.cfg, [trade(3000, tx="s")], self.markets, {}, NOW,
+                                wallet_count=lambda w: 1, record=WINNER)
+        big = ab.check_trades(self.cfg, [trade(12000, tx="b")], self.markets, {}, NOW,
+                              wallet_count=lambda w: 1, record=WINNER)
+        self.assertEqual((len(small), len(big)), (0, 1))
+        self.assertIn("strength: 🟢 strong", big[0])
 
     def test_us_rejects_near_misses(self):
         cat = self.us_catalog()

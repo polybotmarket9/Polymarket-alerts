@@ -28,6 +28,10 @@ numbered steps to place the same bet on **Polymarket US** (polymarket.us): which
 open, which market to find and which button to tap. It's a hint from public trades, not a
 guarantee.
 
+**Big bets only** (`BIG_BETS_ONLY=true`, the default). Every alert needs a bet of
+$10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
+winner behind the big bet makes it 🟢 strong; a big bet alone is 🟡 medium.
+
 **Polymarket US only** (`US_ONLY=true`, the default). Trades are watched on
 polymarket.com, where the volume is, but an alert is only sent when the same bet exists on
 polymarket.us. Games match by their shared event name; only the game winner is listed on

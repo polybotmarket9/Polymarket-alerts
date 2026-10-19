@@ -65,6 +65,9 @@ class Config:
         # Sports markets are far busier, so a $10k bet there is routine; use a higher bar.
         self.big_trade_usd_sports = env_float("BIG_TRADE_USD_SPORTS", 50000)
         self.fresh_wallet_min_usd = env_float("FRESH_WALLET_MIN_USD", 2000)
+        # Only alert on big bets: new-account, proven-winner and split-bet alerts also need
+        # BIG_TRADE_USD (BIG_TRADE_USD_SPORTS for sports) in total. They then only make it stronger.
+        self.big_bets_only = os.environ.get("BIG_BETS_ONLY", "true").lower() not in ("0", "false", "no")
         self.fresh_wallet_max_prior_trades = env_int("FRESH_WALLET_MAX_PRIOR_TRADES", 5)
         self.price_move_points = env_float("PRICE_MOVE_POINTS", 10)  # 10 = 10 cents = 10%
         self.price_move_window_min = env_int("PRICE_MOVE_WINDOW_MIN", 60)
@@ -276,6 +279,11 @@ def side_price_now(m, outcome_index):
     return m["price"] if outcome_index == 0 else 1 - m["price"]
 
 
+def big_bar(cfg, m):
+    """What counts as a big bet in this market's category."""
+    return cfg.big_trade_usd_sports if m.get("cat") == "sports" else cfg.big_trade_usd
+
+
 def is_late(cfg, m, outcome_index, paid):
     """True when the price has already run LATE_MAX_POINTS past what the trader paid."""
     now_price = side_price_now(m, outcome_index)
@@ -301,7 +309,9 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
         usd = trade_usd(t)
         m = markets.get(t.get("conditionId"), {})
         reasons = []
-        big = cfg.big_trade_usd_sports if m.get("cat") == "sports" else cfg.big_trade_usd
+        big = big_bar(cfg, m)
+        if cfg.big_bets_only and usd < big:
+            continue
         if usd >= big:
             reasons.append(f"💰 Big bet: over ${big:,.0f} in one go")
         if usd >= cfg.fresh_wallet_min_usd and t.get("side") == "BUY":
@@ -378,10 +388,11 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=Non
         fresh = {w: v for w, v in wallets.items()
                  if wallet_count(w) - 1 <= cfg.fresh_wallet_max_prior_trades}
         total = sum(fresh.values())
-        if len(fresh) < cfg.cluster_wallets or total < cfg.cluster_total_usd:
-            continue
         cid, idx = key.split("|")
         m = markets.get(cid, {})
+        need = max(cfg.cluster_total_usd, big_bar(cfg, m)) if cfg.big_bets_only else cfg.cluster_total_usd
+        if len(fresh) < cfg.cluster_wallets or total < need:
+            continue
         paid = sum(r[3] * r[2] for r in rows if r[1] in fresh) / total
         idx = int(idx) if idx.lstrip("-").isdigit() else None
         if paid >= cfg.max_signal_price or is_late(cfg, m, idx, paid):
