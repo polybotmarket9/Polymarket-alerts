@@ -82,9 +82,13 @@ class Config:
         self.market_refresh_min = env_int("MARKET_REFRESH_MIN", 10)
         # A "proven winner" has at least this many settled bets, this win rate and profit.
         self.winner_min_usd = env_float("WINNER_MIN_USD", 2000)
-        self.winner_min_settled = env_int("WINNER_MIN_SETTLED", 20)
-        self.winner_min_win_rate = env_float("WINNER_MIN_WIN_RATE", 0.6)
         self.winner_min_profit = env_float("WINNER_MIN_PROFIT", 10000)
+        self.winner_min_return = env_float("WINNER_MIN_RETURN", 0.05)  # profit / amount traded
+        # Bets on a side already priced 95c+ are near-certain and carry little information.
+        self.max_signal_price = env_float("MAX_SIGNAL_PRICE", 0.95)
+        # Only alert on fresh trades, and only once per trader per event every 12 hours.
+        self.max_trade_age_min = env_int("MAX_TRADE_AGE_MIN", 15)
+        self.repeat_hours = env_float("REPEAT_HOURS", 12)
         self.summary_days = env_float("SUMMARY_DAYS", 7)
         self.scorecard_file = os.environ.get(
             "SCORECARD_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard.json"))
@@ -208,42 +212,41 @@ _records = {}
 
 
 def trader_record(wallet, get=http_get):
-    """A wallet's public track record: settled wins/losses and all-time profit (cached 6h)."""
+    """A wallet's public results from Polymarket's leaderboard: profit and amount traded,
+    all-time and over the last month (cached 6h)."""
     hit = _records.get(wallet)
     if hit and time.time() - hit[1] < 6 * 3600:
         return hit[0]
-    board = get(f"{DATA}/v1/leaderboard", {"timePeriod": "all", "orderBy": "PNL", "user": wallet})
-    profit = float(board[0].get("pnl") or 0) if board else 0.0
-    best = get(f"{DATA}/closed-positions", {"user": wallet, "limit": 500})
-    positions = {p.get("asset"): p for p in best}
-    partial = len(best) >= 500
-    if partial:  # long history: the list comes best-first, so fetch the worst too
-        for p in get(f"{DATA}/closed-positions", {"user": wallet, "limit": 500,
-                                                  "sortBy": "REALIZEDPNL", "sortDirection": "ASC"}):
-            positions[p.get("asset")] = p
-    pnls = [float(p.get("realizedPnl") or 0) for p in positions.values()]
-    rec = {"wins": sum(x > 0 for x in pnls), "losses": sum(x < 0 for x in pnls),
-           "profit": profit, "partial": partial}
+    rec = {}
+    for period in ("all", "month"):
+        row = get(f"{DATA}/v1/leaderboard", {"timePeriod": period, "orderBy": "PNL", "user": wallet})
+        row = row[0] if row else {}
+        rec[period] = {"profit": float(row.get("pnl") or 0), "volume": float(row.get("vol") or 0)}
     _records[wallet] = (rec, time.time())
     return rec
 
 
 def is_proven_winner(cfg, rec):
-    settled = rec["wins"] + rec["losses"]
-    if settled < cfg.winner_min_settled or rec["profit"] < cfg.winner_min_profit:
-        return False
-    # With a very long history we only see the best and worst bets, so trust profit alone.
-    return rec["partial"] or rec["wins"] / settled >= cfg.winner_min_win_rate
+    """Big all-time profit, a solid return on what they've traded, and still winning lately."""
+    total = rec["all"]
+    return (total["profit"] >= cfg.winner_min_profit
+            and total["volume"] > 0 and total["profit"] / total["volume"] >= cfg.winner_min_return
+            and rec["month"]["profit"] > 0)
+
+
+def short_money(x):
+    a = abs(x)
+    text = f"${a / 1e6:.1f}M" if a >= 1e6 else f"${a / 1e3:.0f}k" if a >= 1e4 else f"${a:,.0f}"
+    return ("-" if x < 0 else "+") + text
 
 
 def record_text(rec):
-    settled = rec["wins"] + rec["losses"]
-    if not settled:
-        return "no settled bets yet"
-    count = f"{settled}+" if rec["partial"] else str(settled)
-    rate = "" if rec["partial"] else f" ({rec['wins'] / settled:.0%})"
-    sign = "+" if rec["profit"] >= 0 else "-"
-    return f"won {rec['wins']} of {count} settled bets{rate}, {sign}${abs(rec['profit']):,.0f} all-time"
+    total, month = rec["all"], rec["month"]
+    if not total["volume"]:
+        return "no trading record yet"
+    ret = total["profit"] / total["volume"]
+    return (f"{short_money(total['profit'])} all-time on {short_money(total['volume'])[1:]} traded "
+            f"({ret:+.0%} return), {short_money(month['profit'])} this month")
 
 
 # ---------------------------------------------------------------- rules
@@ -274,14 +277,15 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
     record = record or trader_record
     seen = state.setdefault("seen_trades", {})
+    repeats = state.setdefault("trader_alerted", {})
     alerts = []
     for t in trades:
         tid = trade_id(t)
         if tid in seen:
             continue
         seen[tid] = now
-        # Ignore trades older than the watch window (e.g. on the very first run).
-        if now - int(t.get("timestamp", now)) > cfg.price_move_window_min * 60:
+        # Ignore old trades (e.g. the backlog on the very first run).
+        if now - int(t.get("timestamp", now)) > cfg.max_trade_age_min * 60:
             continue
         usd = trade_usd(t)
         m = markets.get(t.get("conditionId"), {})
@@ -304,16 +308,23 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             text, side, price = format_trade_alert(t, m, usd, reasons, rec, strong)
             idx = t.get("outcomeIndex")
             side_idx = idx if t.get("side") != "SELL" else (1 - idx if idx in (0, 1) else None)
+            if price > cfg.max_signal_price:
+                continue
             if is_late(cfg, m, side_idx, price):
                 print(f"skipped late alert: {t.get('title')}", flush=True)
                 continue
+            key = f'{t["proxyWallet"]}|{t.get("eventSlug") or t.get("conditionId")}'
+            if now - repeats.get(key, 0) < cfg.repeat_hours * 3600:
+                continue
+            repeats[key] = now
             alerts.append(text)
             log_alert(state, now, t.get("conditionId"), t.get("title") or m.get("question", ""),
                       t.get("eventSlug") or m.get("slug", ""), side, price,
                       "strong" if strong else "medium", m.get("cat"))
-    # Forget trade ids after a day so the state file stays small.
-    for k in [k for k, v in seen.items() if now - v > 86400]:
-        del seen[k]
+    # Forget old entries so the state file stays small.
+    for d in (seen, repeats):
+        for k in [k for k, v in d.items() if now - v > 86400]:
+            del d[k]
     return alerts
 
 
@@ -357,7 +368,7 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
         m = markets.get(cid, {})
         paid = sum(r[3] * r[2] for r in rows if r[1] in fresh) / total
         idx = int(idx) if idx.lstrip("-").isdigit() else None
-        if is_late(cfg, m, idx, paid):
+        if paid > cfg.max_signal_price or is_late(cfg, m, idx, paid):
             continue
         cooldown[key] = now
         side, title = rows[-1][4], rows[-1][5] or m.get("question", "")

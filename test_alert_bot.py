@@ -5,8 +5,8 @@ import unittest
 import alert_bot as ab
 
 NOW = 1_800_000_000
-NOBODY = lambda w: {"wins": 0, "losses": 0, "profit": 0, "partial": False}
-WINNER = lambda w: {"wins": 40, "losses": 10, "profit": 85000, "partial": False}
+NOBODY = lambda w: {"all": {"profit": 0, "volume": 0}, "month": {"profit": 0, "volume": 0}}
+WINNER = lambda w: {"all": {"profit": 85000, "volume": 500000}, "month": {"profit": 4000, "volume": 60000}}
 
 
 def fake_get(url, params=None):
@@ -129,25 +129,34 @@ class Tests(unittest.TestCase):
         a = ab.check_trades(self.cfg, [trade(3000)], self.markets, state, NOW,
                             wallet_count=lambda w: 100, record=WINNER)
         self.assertEqual(len(a), 1)
-        self.assertIn("Proven winner: won 40 of 50 settled bets (80%), +$85,000 all-time", a[0])
+        self.assertIn("Proven winner: +$85k all-time on $500k traded (+17% return), +$4,000 this month", a[0])
         self.assertIn("strength 🟢 strong", a[0])
         self.assertEqual(state["scorecard"][0]["strength"], "strong")
         self.assertEqual(state["scorecard"][0]["side"], "Yes")
 
     def test_losing_trader_with_small_bet_is_quiet(self):
-        loser = lambda w: {"wins": 10, "losses": 30, "profit": -5000, "partial": False}
+        loser = lambda w: {"all": {"profit": 30000, "volume": 2e6}, "month": {"profit": -100, "volume": 1e5}}
         self.assertEqual(ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW,
                                          wallet_count=lambda w: 100, record=loser), [])
 
-    def test_trader_record_counts_wins_and_losses(self):
+    def test_trader_record_reads_leaderboard(self):
         def get(url, params):
-            if "leaderboard" in url:
-                return [{"pnl": 1234.5}]
-            return [{"asset": "a", "realizedPnl": 50}, {"asset": "b", "realizedPnl": -20},
-                    {"asset": "c", "realizedPnl": 0}]
+            return [{"pnl": 1234.5, "vol": 10000}] if params["timePeriod"] == "all" else [{"pnl": -5, "vol": 50}]
         ab._records.clear()
         rec = ab.trader_record("0xabc", get=get)
-        self.assertEqual((rec["wins"], rec["losses"], rec["profit"], rec["partial"]), (1, 1, 1234.5, False))
+        self.assertEqual(rec, {"all": {"profit": 1234.5, "volume": 10000}, "month": {"profit": -5, "volume": 50}})
+        self.assertFalse(ab.is_proven_winner(self.cfg, rec))
+
+    def test_near_certain_and_repeat_bets_are_quiet(self):
+        sure = dict(trade(15000), price=0.97, size=15000 / 0.97)
+        self.assertEqual(ab.check_trades(self.cfg, [sure], self.markets, {}, NOW,
+                                         wallet_count=lambda w: 100, record=NOBODY), [])
+        state = {}
+        first = ab.check_trades(self.cfg, [trade(15000, tx="r1")], self.markets, state, NOW,
+                                wallet_count=lambda w: 100, record=NOBODY)
+        again = ab.check_trades(self.cfg, [trade(15000, tx="r2", ts=NOW + 60)], self.markets, state, NOW + 90,
+                                wallet_count=lambda w: 100, record=NOBODY)
+        self.assertEqual((len(first), len(again)), (1, 0))
 
     def test_scorecard_settles_and_summarises(self):
         state = {"scorecard": [

@@ -13,10 +13,14 @@ signal worth a look, not proof of anything.
 | Fresh wallet | a **$2,000+** buy from a wallet with **5 or fewer** earlier trades | A new account showing up with real money is a classic insider pattern. |
 | Price jump | price moves **10+ points** (e.g. 30¢ to 40¢) within **60 min** on a market that traded **between $1k and $100k** in the last day | A quiet market suddenly moving hard. |
 
-**Proven winners.** The bot looks up each sizeable trader's public record (settled
-wins and losses, all-time profit). A **$2,000+** bet from someone with **20+ settled
-bets, a 60%+ win rate and $10,000+ profit** triggers an alert on its own, and every
-trade alert shows the trader's record.
+**Proven winners.** The bot looks up each sizeable trader's public results on
+Polymarket's leaderboard. A **$2,000+** bet from someone with **$10,000+ all-time
+profit, a 5%+ return on everything they've traded, and a profitable last month**
+triggers an alert on its own, and every trade alert shows the trader's record.
+
+**Noise filters.** No alerts for bets on a side already priced above 95¢ (near-certain,
+little to learn), for trades more than 15 minutes old, or for the same trader on the
+same event more than once every 12 hours.
 
 Every alert ends with a **Signal** line saying which side to bet if you follow it,
 and how strong it is: 🟢 strong (proven winner, or big bet *and* new wallet),
