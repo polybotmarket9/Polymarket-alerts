@@ -9,6 +9,14 @@ might be informed:
   2. FRESH WALLET  - a wallet with almost no trading history places a sizeable bet.
   3. PRICE JUMP    - a market's price moves a lot within an hour while it had
                      little trading volume before.
+  4. PROVEN WINNER - a trader with a strong public track record places a bet.
+  5. SPLIT BET     - several brand-new wallets back the same side within minutes,
+                     which is often one person hiding a big bet.
+
+Alerts are skipped when the price has already run well past what the trader paid.
+
+Every alert is logged to a scorecard, settled when the market resolves, and
+summarised weekly in Telegram (or any time you send the bot /score).
 
 Only public market data is used. Standard library only, no pip install needed.
 
@@ -43,7 +51,9 @@ class Config:
     def __init__(self):
         self.telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-        self.tag = os.environ.get("MARKET_TAG", "crypto")
+        # Polymarket categories to watch, and the name each gets in alerts and the scorecard.
+        self.tags = [t.strip() for t in os.environ.get(
+            "MARKET_TAGS", os.environ.get("MARKET_TAG", "crypto,politics,sports,business")).split(",") if t.strip()]
         # Skip very short-term "up or down in 15 minutes" style markets; they are
         # dominated by bots and would flood you with noise.
         self.exclude = [k.strip().lower() for k in
@@ -57,8 +67,27 @@ class Config:
         self.price_move_max_volume_24h = env_float("PRICE_MOVE_MAX_VOLUME_24H", 100000)
         # Markets with almost no trading "move" on stale quotes alone; ignore those.
         self.price_move_min_volume_24h = env_float("PRICE_MOVE_MIN_VOLUME_24H", 1000)
-        self.max_markets = env_int("MAX_MARKETS", 300)
+        self.max_markets = env_int("MAX_MARKETS", 300)  # per category
+        # Live sports odds swing constantly during games, so price jumps there are noise.
+        self.price_move_skip = [c.strip() for c in
+                                os.environ.get("PRICE_MOVE_SKIP_CATEGORIES", "sports").split(",") if c.strip()]
+        # Split bets: this many new wallets, each betting at least cluster_min_usd on the same
+        # side within cluster_window_min, adding up to at least cluster_total_usd.
+        self.cluster_wallets = env_int("CLUSTER_WALLETS", 3)
+        self.cluster_min_usd = env_float("CLUSTER_MIN_USD", 1000)
+        self.cluster_total_usd = env_float("CLUSTER_TOTAL_USD", 5000)
+        self.cluster_window_min = env_int("CLUSTER_WINDOW_MIN", 30)
+        # Skip an alert if the price has already moved this many points past the trader's price.
+        self.late_max_points = env_float("LATE_MAX_POINTS", 10)
         self.market_refresh_min = env_int("MARKET_REFRESH_MIN", 10)
+        # A "proven winner" has at least this many settled bets, this win rate and profit.
+        self.winner_min_usd = env_float("WINNER_MIN_USD", 2000)
+        self.winner_min_settled = env_int("WINNER_MIN_SETTLED", 20)
+        self.winner_min_win_rate = env_float("WINNER_MIN_WIN_RATE", 0.6)
+        self.winner_min_profit = env_float("WINNER_MIN_PROFIT", 10000)
+        self.summary_days = env_float("SUMMARY_DAYS", 7)
+        self.scorecard_file = os.environ.get(
+            "SCORECARD_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard.json"))
         self.state_file = os.environ.get(
             "STATE_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json"))
 
@@ -100,19 +129,33 @@ def as_list(value):
     return value or []
 
 
+CATEGORY_NAMES = {"crypto": "Crypto", "politics": "Politics", "sports": "Sports", "business": "Company news"}
+
+
+def category_name(tag):
+    return CATEGORY_NAMES.get(tag, tag.replace("-", " ").title())
+
+
 def fetch_markets(cfg, get=http_get):
-    """Active markets under the configured tag, keyed by conditionId."""
+    """Active markets in the configured categories, keyed by conditionId."""
     markets = {}
+    for tag in cfg.tags:
+        fetch_category(cfg, tag, markets, get)
+    return markets
+
+
+def fetch_category(cfg, tag, markets, get):
+    start = len(markets)
     offset = 0
-    while len(markets) < cfg.max_markets:
-        events = get(f"{GAMMA}/events", {"tag_slug": cfg.tag, "active": "true", "closed": "false",
+    while len(markets) - start < cfg.max_markets:
+        events = get(f"{GAMMA}/events", {"tag_slug": tag, "active": "true", "closed": "false",
                                          "limit": 100, "offset": offset,
                                          "order": "volume24hr", "ascending": "false"})
         if not events:
             break
         for ev in events:
             for m in ev.get("markets", []):
-                if m.get("closed") or not m.get("conditionId"):
+                if m.get("closed") or not m.get("conditionId") or m["conditionId"] in markets:
                     continue
                 q = m.get("question") or ev.get("title", "")
                 if any(k in q.lower() for k in cfg.exclude):
@@ -125,14 +168,14 @@ def fetch_markets(cfg, get=http_get):
                     "price": prices[0] if prices else None,  # price of first outcome (usually "Yes")
                     "volume24hr": float(m.get("volume24hr") or 0),
                     "one_hour_change": m.get("oneHourPriceChange"),
+                    "cat": tag,
                 }
         if len(events) < 100:
             break
         offset += 100
-    return markets
 
 
-def fetch_trades(condition_ids, min_usd, since, get=http_get, max_pages=5):
+def fetch_trades(condition_ids, min_usd, since, get=http_get, max_pages=10):
     """Trades of at least min_usd since `since` in the given markets, newest first.
 
     Reads Polymarket's site-wide feed of large trades (a few requests) and keeps the
@@ -161,6 +204,48 @@ def wallet_trade_count(wallet, limit, get=http_get):
     return n
 
 
+_records = {}
+
+
+def trader_record(wallet, get=http_get):
+    """A wallet's public track record: settled wins/losses and all-time profit (cached 6h)."""
+    hit = _records.get(wallet)
+    if hit and time.time() - hit[1] < 6 * 3600:
+        return hit[0]
+    board = get(f"{DATA}/v1/leaderboard", {"timePeriod": "all", "orderBy": "PNL", "user": wallet})
+    profit = float(board[0].get("pnl") or 0) if board else 0.0
+    best = get(f"{DATA}/closed-positions", {"user": wallet, "limit": 500})
+    positions = {p.get("asset"): p for p in best}
+    partial = len(best) >= 500
+    if partial:  # long history: the list comes best-first, so fetch the worst too
+        for p in get(f"{DATA}/closed-positions", {"user": wallet, "limit": 500,
+                                                  "sortBy": "REALIZEDPNL", "sortDirection": "ASC"}):
+            positions[p.get("asset")] = p
+    pnls = [float(p.get("realizedPnl") or 0) for p in positions.values()]
+    rec = {"wins": sum(x > 0 for x in pnls), "losses": sum(x < 0 for x in pnls),
+           "profit": profit, "partial": partial}
+    _records[wallet] = (rec, time.time())
+    return rec
+
+
+def is_proven_winner(cfg, rec):
+    settled = rec["wins"] + rec["losses"]
+    if settled < cfg.winner_min_settled or rec["profit"] < cfg.winner_min_profit:
+        return False
+    # With a very long history we only see the best and worst bets, so trust profit alone.
+    return rec["partial"] or rec["wins"] / settled >= cfg.winner_min_win_rate
+
+
+def record_text(rec):
+    settled = rec["wins"] + rec["losses"]
+    if not settled:
+        return "no settled bets yet"
+    count = f"{settled}+" if rec["partial"] else str(settled)
+    rate = "" if rec["partial"] else f" ({rec['wins'] / settled:.0%})"
+    sign = "+" if rec["profit"] >= 0 else "-"
+    return f"won {rec['wins']} of {count} settled bets{rate}, {sign}${abs(rec['profit']):,.0f} all-time"
+
+
 # ---------------------------------------------------------------- rules
 
 def trade_usd(t):
@@ -171,9 +256,23 @@ def trade_id(t):
     return f'{t.get("transactionHash")}:{t.get("asset")}:{t.get("proxyWallet")}:{t.get("size")}'
 
 
-def check_trades(cfg, trades, markets, state, now, wallet_count=None):
+def side_price_now(m, outcome_index):
+    """Latest known price of one side of a market, or None."""
+    if m.get("price") is None or outcome_index not in (0, 1):
+        return None
+    return m["price"] if outcome_index == 0 else 1 - m["price"]
+
+
+def is_late(cfg, m, outcome_index, paid):
+    """True when the price has already run LATE_MAX_POINTS past what the trader paid."""
+    now_price = side_price_now(m, outcome_index)
+    return now_price is not None and (now_price - paid) * 100 > cfg.late_max_points
+
+
+def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None):
     """Return a list of alert messages for trades not seen before."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
+    record = record or trader_record
     seen = state.setdefault("seen_trades", {})
     alerts = []
     for t in trades:
@@ -194,11 +293,80 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None):
             # The trade itself counts, so "prior" = n - 1.
             if n - 1 <= cfg.fresh_wallet_max_prior_trades:
                 reasons.append(f"Fresh wallet: only {max(n - 1, 0)} earlier trades on Polymarket")
+        rec, winner = None, False
+        if reasons or (usd >= cfg.winner_min_usd and t.get("side") == "BUY"):
+            rec = record(t["proxyWallet"])
+            winner = t.get("side") == "BUY" and usd >= cfg.winner_min_usd and is_proven_winner(cfg, rec)
+            if winner:
+                reasons.insert(0, f"Proven winner: {record_text(rec)}")
         if reasons:
-            alerts.append(format_trade_alert(t, m, usd, reasons))
+            strong = winner or len(reasons) > 1
+            text, side, price = format_trade_alert(t, m, usd, reasons, rec, strong)
+            idx = t.get("outcomeIndex")
+            side_idx = idx if t.get("side") != "SELL" else (1 - idx if idx in (0, 1) else None)
+            if is_late(cfg, m, side_idx, price):
+                print(f"skipped late alert: {t.get('title')}", flush=True)
+                continue
+            alerts.append(text)
+            log_alert(state, now, t.get("conditionId"), t.get("title") or m.get("question", ""),
+                      t.get("eventSlug") or m.get("slug", ""), side, price,
+                      "strong" if strong else "medium", m.get("cat"))
     # Forget trade ids after a day so the state file stays small.
     for k in [k for k, v in seen.items() if now - v > 86400]:
         del seen[k]
+    return alerts
+
+
+def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
+    """Alert when several brand-new wallets back the same side of a market in a short time."""
+    wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
+    window = cfg.cluster_window_min * 60
+    buys = state.setdefault("recent_buys", {})
+    seen = state.setdefault("cluster_seen", {})
+    cooldown = state.setdefault("cluster_alerted", {})
+    for t in trades:
+        usd = trade_usd(t)
+        if t.get("side") != "BUY" or usd < cfg.cluster_min_usd or now - int(t.get("timestamp", 0)) > window:
+            continue
+        tid = trade_id(t)
+        if tid in seen:
+            continue
+        seen[tid] = now
+        key = f'{t.get("conditionId")}|{t.get("outcomeIndex")}'
+        buys.setdefault(key, []).append([int(t.get("timestamp", now)), t["proxyWallet"], usd,
+                                         float(t.get("price", 0)), t.get("outcome", ""), t.get("title", "")])
+    alerts = []
+    for key, rows in list(buys.items()):
+        rows[:] = [r for r in rows if now - r[0] <= window]
+        if not rows:
+            del buys[key]
+            continue
+        wallets = {}
+        for r in rows:
+            wallets[r[1]] = wallets.get(r[1], 0) + r[2]
+        # Cheap checks first; only look wallets up when the group is big enough.
+        if len(wallets) < cfg.cluster_wallets or sum(wallets.values()) < cfg.cluster_total_usd \
+                or now - cooldown.get(key, 0) < window:
+            continue
+        fresh = {w: v for w, v in wallets.items()
+                 if wallet_count(w) - 1 <= cfg.fresh_wallet_max_prior_trades}
+        total = sum(fresh.values())
+        if len(fresh) < cfg.cluster_wallets or total < cfg.cluster_total_usd:
+            continue
+        cid, idx = key.split("|")
+        m = markets.get(cid, {})
+        paid = sum(r[3] * r[2] for r in rows if r[1] in fresh) / total
+        idx = int(idx) if idx.lstrip("-").isdigit() else None
+        if is_late(cfg, m, idx, paid):
+            continue
+        cooldown[key] = now
+        side, title = rows[-1][4], rows[-1][5] or m.get("question", "")
+        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg))
+        log_alert(state, now, cid, title, m.get("slug", ""), side, paid, "strong", m.get("cat"))
+    for k in [k for k, v in seen.items() if now - v > 86400]:
+        del seen[k]
+    for k in [k for k, v in cooldown.items() if now - v > 86400]:
+        del cooldown[k]
     return alerts
 
 
@@ -209,7 +377,7 @@ def check_price_moves(cfg, markets, state, now):
     window = cfg.price_move_window_min * 60
     alerts = []
     for cid, m in markets.items():
-        if m["price"] is None:
+        if m["price"] is None or m.get("cat") in cfg.price_move_skip:
             continue
         points = history.setdefault(cid, [])
         points.append([now, m["price"]])
@@ -225,7 +393,9 @@ def check_price_moves(cfg, markets, state, now):
         if now - cooldown.get(cid, 0) < window:
             continue
         cooldown[cid] = now
-        alerts.append(format_price_alert(m, move, cfg))
+        text, side, price = format_price_alert(m, move, cfg)
+        alerts.append(text)
+        log_alert(state, now, cid, m["question"], m["slug"], side, price, "weak", m.get("cat"))
     for cid in [c for c in history if c not in markets]:
         del history[cid]
     for cid in [c for c, v in cooldown.items() if now - v > 86400]:
@@ -245,29 +415,46 @@ def other_outcome(outcomes, outcome):
     return rest[0] if len(outcomes) == 2 and rest else f"not {outcome}"
 
 
+def category_suffix(m):
+    return f" · {category_name(m['cat'])}" if m.get("cat") else ""
+
+
+def format_split_alert(m, title, side, n, total, paid, cfg):
+    e = html.escape
+    return "\n".join([
+        f"🧩 <b>{e(title)}</b>{category_suffix(m)}",
+        f"{n} brand-new wallets bought {e(str(side))} within {cfg.cluster_window_min} min · "
+        f"${total:,.0f} total at ~{paid * 100:.0f}¢",
+        "• Split bet: often one person spreading a big bet across fresh accounts",
+        signal_line(side, "🟢 strong"),
+        f'<a href="{market_link(m.get("slug"))}">Open market</a>'])
+
+
 def signal_line(side, strength):
     return (f"👉 <b>Signal: bet {html.escape(str(side))}</b> · strength {strength}\n"
             "<i>A hint from public trades, not a sure thing. Check the news first.</i>")
 
 
-def format_trade_alert(t, m, usd, reasons):
+def format_trade_alert(t, m, usd, reasons, rec=None, strong=False):
+    """Returns (message, side to bet, that side's price)."""
     e = html.escape
     # Follow the trader: buying an outcome backs it, selling it backs the other side.
-    side = t.get("outcome", "")
+    side, price = t.get("outcome", ""), float(t.get("price", 0))
     if t.get("side") == "SELL":
-        side = other_outcome(m.get("outcomes", []), side)
-    strength = "🟢 strong" if len(reasons) > 1 else "🟡 medium"
+        side, price = other_outcome(m.get("outcomes", []), side), 1 - price
+    strength = "🟢 strong" if strong else "🟡 medium"
     title = t.get("title") or m.get("question", "Unknown market")
     wallet = t.get("proxyWallet", "")
     who = t.get("pseudonym") or t.get("name") or wallet[:10]
-    lines = [f"🚨 <b>{e(title)}</b>",
+    lines = [f"🚨 <b>{e(title)}</b>{category_suffix(m)}",
              f'{e(t.get("side", ""))} {e(str(t.get("outcome", "")))} at {float(t.get("price", 0)) * 100:.0f}¢ '
              f'· ${usd:,.0f}',
              *[f"• {e(r)}" for r in reasons],
              signal_line(side, strength),
-             f'Trader: <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>',
+             f'Trader: <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>'
+             + (f" · {e(record_text(rec))}" if rec else ""),
              f'<a href="{market_link(t.get("eventSlug") or m.get("slug"))}">Open market</a>']
-    return "\n".join(lines)
+    return "\n".join(lines), side, price
 
 
 def format_price_alert(m, move, cfg):
@@ -275,12 +462,85 @@ def format_price_alert(m, move, cfg):
     arrow = "📈" if move > 0 else "📉"
     first = m["outcomes"][0] if m["outcomes"] else "Yes"
     side = first if move > 0 else other_outcome(m["outcomes"], first)
+    price = m["price"] if move > 0 else 1 - m["price"]
     return "\n".join([
-        f"{arrow} <b>{e(m['question'])}</b>",
+        f"{arrow} <b>{e(m['question'])}</b>{category_suffix(m)}",
         f"{e(str(first))} moved {move:+.0f} points in {cfg.price_move_window_min} min, now {m['price'] * 100:.0f}¢",
         f"• Quiet market: only ${m['volume24hr']:,.0f} traded in the last 24h",
         signal_line(side, "🟠 weak"),
-        f'<a href="{market_link(m["slug"])}">Open market</a>'])
+        f'<a href="{market_link(m["slug"])}">Open market</a>']), side, price
+
+
+# ---------------------------------------------------------------- scorecard
+
+def log_alert(state, now, cid, title, slug, side, price, strength, cat=None):
+    state.setdefault("scorecard", []).append({
+        "t": now, "cid": cid, "title": title, "slug": slug, "side": str(side),
+        "price": round(min(max(float(price), 0.01), 0.99), 4), "strength": strength,
+        "cat": cat or "other"})
+
+
+def resolve_scorecard(state, get=http_get):
+    """Mark alerts won/lost once their market has settled."""
+    open_ = [a for a in state.get("scorecard", []) if "result" not in a and a.get("cid")]
+    ids = sorted({a["cid"] for a in open_})
+    found = {}
+    for i in range(0, len(ids), 20):
+        for closed in ("true", "false"):
+            params = [("condition_ids", c) for c in ids[i:i + 20]] + [("closed", closed), ("limit", 50)]
+            for m in get(f"{GAMMA}/markets", params):
+                found[m.get("conditionId")] = m
+    for a in open_:
+        m = found.get(a["cid"])
+        if not m or not m.get("closed"):
+            continue
+        outcomes = [str(o) for o in as_list(m.get("outcomes"))]
+        prices = [float(p) for p in as_list(m.get("outcomePrices"))]
+        winners = [o for o, p in zip(outcomes, prices) if p >= 0.99]
+        if winners:
+            a["result"] = "won" if a["side"] in winners else "lost"
+        elif time.time() - a["t"] > 60 * 86400:
+            a["result"] = "void"
+
+
+def paper_profit(done):
+    """Profit from $100 on each settled signal at the price when the alert went out."""
+    return sum(100 * (1 / a["price"] - 1) if a["result"] == "won" else -100 for a in done)
+
+
+def money(x):
+    return f"{'+' if x >= 0 else '-'}${abs(x):,.0f}"
+
+
+def summary_text(state):
+    card = state.get("scorecard", [])
+    if not card:
+        return "📊 <b>Scorecard</b>\nNo alerts yet. Quiet markets are normal; I'll keep watching."
+    done = [a for a in card if a.get("result") in ("won", "lost")]
+    won = [a for a in done if a["result"] == "won"]
+    lines = ["📊 <b>Scorecard</b> (since " + time.strftime("%b %d", time.gmtime(card[0]["t"])) + ")"]
+    if done:
+        lines.append(f"Settled: {len(won)} won, {len(done) - len(won)} lost ({len(won) / len(done):.0%})")
+        parts = []
+        for key, label in (("strong", "🟢 strong"), ("medium", "🟡 medium"), ("weak", "🟠 weak")):
+            k = [a for a in done if a["strength"] == key]
+            if k:
+                parts.append(f"{label} {sum(a['result'] == 'won' for a in k)}-{sum(a['result'] == 'lost' for a in k)}")
+        lines.append(" · ".join(parts))
+        lines.append(f"If you'd bet $100 on each: {money(paper_profit(done))}")
+        cats = sorted({a.get("cat", "other") for a in done},
+                      key=lambda c: -sum(a["result"] == "won" for a in done if a.get("cat", "other") == c)
+                      / max(1, sum(1 for a in done if a.get("cat", "other") == c)))
+        lines.append("\n<b>By category</b> (most accurate first)")
+        for c in cats:
+            k = [a for a in done if a.get("cat", "other") == c]
+            w = sum(a["result"] == "won" for a in k)
+            lines.append(f"{category_name(c)}: {w}-{len(k) - w} ({w / len(k):.0%}) · {money(paper_profit(k))}")
+    else:
+        lines.append("No alerts have settled yet. Markets can take days or weeks to resolve.")
+    pending = len(card) - len(done) - sum(a.get("result") == "void" for a in card)
+    lines.append(f"Waiting to settle: {pending} alert{'s' if pending != 1 else ''}")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------- telegram
@@ -312,6 +572,25 @@ def send_telegram(cfg, text, post=http_post):
           "disable_web_page_preview": True})
 
 
+def handle_commands(cfg, state, get=http_get):
+    """Answer /score (and /help) sent to the bot from your own chat."""
+    if not (cfg.telegram_token and cfg.telegram_chat_id):
+        return
+    res = get(f"https://api.telegram.org/bot{cfg.telegram_token}/getUpdates",
+              {"offset": state.get("tg_offset", 0) + 1, "timeout": 0})
+    for u in res.get("result", []):
+        state["tg_offset"] = max(state.get("tg_offset", 0), u.get("update_id", 0))
+        msg = u.get("message") or {}
+        if str(msg.get("chat", {}).get("id")) != str(cfg.telegram_chat_id):
+            continue
+        text = (msg.get("text") or "").strip().lower()
+        if text.startswith("/score"):
+            send_telegram(cfg, summary_text(state))
+        elif text.startswith(("/help", "/start")):
+            send_telegram(cfg, "Send /score to see how past alerts turned out. "
+                               "I also send the scorecard automatically once a week.")
+
+
 def find_chat_id(cfg):
     if not cfg.telegram_token:
         sys.exit("Set TELEGRAM_BOT_TOKEN first.")
@@ -330,37 +609,64 @@ def find_chat_id(cfg):
 
 # ---------------------------------------------------------------- main loop
 
-def load_state(path):
+def read_json(path, default):
     try:
         with open(path) as f:
             return json.load(f)
     except (OSError, ValueError):
-        return {}
+        return default
 
 
-def save_state(path, state):
+def write_json(path, data, **kw):
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
-        json.dump(state, f)
+        json.dump(data, f, **kw)
     os.replace(tmp, path)
+
+
+def load_state(cfg):
+    state = read_json(cfg.state_file, {})
+    # The scorecard is also kept in its own file (committed to the repo) so it survives
+    # even if the rest of the state is lost; use whichever copy is longer.
+    card = read_json(cfg.scorecard_file, [])
+    if len(card) > len(state.get("scorecard", [])):
+        state["scorecard"] = card
+    return state
+
+
+def save_state(cfg, state):
+    write_json(cfg.state_file, state)
+    write_json(cfg.scorecard_file, state.get("scorecard", []), indent=1)
 
 
 def run_once(cfg, markets=None):
     """One round of checks. Pass `markets` to reuse a recent market list (skips price checks)."""
-    state = load_state(cfg.state_file)
+    state = load_state(cfg)
     discover_chat_id(cfg, state)
     now = int(time.time())
+    try:
+        handle_commands(cfg, state)
+    except (urllib.error.URLError, TimeoutError, ValueError) as err:
+        print(f"couldn't read Telegram commands: {err}", file=sys.stderr, flush=True)
     fresh = markets is None
     if fresh:
         markets = fetch_markets(cfg)
-    min_usd = min(cfg.big_trade_usd, cfg.fresh_wallet_min_usd)
+    min_usd = min(cfg.big_trade_usd, cfg.fresh_wallet_min_usd, cfg.winner_min_usd, cfg.cluster_min_usd)
     trades = fetch_trades(markets.keys(), min_usd, since=now - cfg.price_move_window_min * 60)
-    alerts = check_trades(cfg, trades, markets, state, now)
+    alerts = check_trades(cfg, trades, markets, state, now) + check_split_bets(cfg, trades, markets, state, now)
     if fresh:
         alerts += check_price_moves(cfg, markets, state, now)
+        try:
+            resolve_scorecard(state)
+        except (urllib.error.URLError, TimeoutError, ValueError) as err:
+            print(f"couldn't settle scorecard: {err}", file=sys.stderr, flush=True)
+    last = state.setdefault("last_summary", now)
+    if now - last >= cfg.summary_days * 86400:
+        alerts.append(summary_text(state))
+        state["last_summary"] = now
     for a in alerts:
         send_telegram(cfg, a)
-    save_state(cfg.state_file, state)
+    save_state(cfg, state)
     newest = min((now - int(t.get("timestamp", 0)) for t in trades), default=None)
     biggest = max((trade_usd(t) for t in trades), default=0)
     print(f"{time.strftime('%H:%M:%S')} {len(markets)} markets, {len(trades)} recent trades of "

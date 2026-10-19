@@ -5,6 +5,8 @@ import unittest
 import alert_bot as ab
 
 NOW = 1_800_000_000
+NOBODY = lambda w: {"wins": 0, "losses": 0, "profit": 0, "partial": False}
+WINNER = lambda w: {"wins": 40, "losses": 10, "profit": 85000, "partial": False}
 
 
 def fake_get(url, params=None):
@@ -38,25 +40,25 @@ class Tests(unittest.TestCase):
         self.assertAlmostEqual(self.markets["0xA"]["price"], 0.30)
 
     def test_big_trade(self):
-        alerts = ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW, wallet_count=lambda w: 100)
+        alerts = ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual(len(alerts), 1)
         self.assertIn("Big trade", alerts[0])
 
     def test_fresh_wallet(self):
-        alerts = ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW, wallet_count=lambda w: 2)
+        alerts = ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW, wallet_count=lambda w: 2, record=NOBODY)
         self.assertIn("Fresh wallet: only 1 earlier", alerts[0])
 
     def test_small_or_experienced_is_quiet(self):
         trades = [trade(3000, tx="a"), trade(1000, tx="b")]
-        self.assertEqual(ab.check_trades(self.cfg, trades, self.markets, {}, NOW, wallet_count=lambda w: 50), [])
+        self.assertEqual(ab.check_trades(self.cfg, trades, self.markets, {}, NOW, wallet_count=lambda w: 50, record=NOBODY), [])
 
     def test_no_repeat_and_old_trades_ignored(self):
         state = {}
-        ab.check_trades(self.cfg, [trade(12000)], self.markets, state, NOW, wallet_count=lambda w: 100)
+        ab.check_trades(self.cfg, [trade(12000)], self.markets, state, NOW, wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual(ab.check_trades(self.cfg, [trade(12000)], self.markets, state, NOW,
-                                         wallet_count=lambda w: 100), [])
+                                         wallet_count=lambda w: 100, record=NOBODY), [])
         old = trade(12000, ts=NOW - 7200, tx="old")
-        self.assertEqual(ab.check_trades(self.cfg, [old], self.markets, {}, NOW, wallet_count=lambda w: 100), [])
+        self.assertEqual(ab.check_trades(self.cfg, [old], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY), [])
 
     def test_price_jump_on_quiet_market(self):
         state = {}
@@ -83,10 +85,10 @@ class Tests(unittest.TestCase):
         self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW), [])
 
     def test_signal_side(self):
-        a = ab.check_trades(self.cfg, [trade(15000)], self.markets, {}, NOW, wallet_count=lambda w: 1)[0]
+        a = ab.check_trades(self.cfg, [trade(15000)], self.markets, {}, NOW, wallet_count=lambda w: 1, record=NOBODY)[0]
         self.assertIn("Signal: bet Yes</b> · strength 🟢 strong", a)
         sell = trade(12000, side="SELL", tx="s")
-        a = ab.check_trades(self.cfg, [sell], self.markets, {}, NOW, wallet_count=lambda w: 100)[0]
+        a = ab.check_trades(self.cfg, [sell], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)[0]
         self.assertIn("Signal: bet No</b> · strength 🟡 medium", a)
 
     def test_price_drop_signals_other_side(self):
@@ -121,6 +123,105 @@ class Tests(unittest.TestCase):
         finally:
             ab.urllib.request.urlopen = orig
         self.assertEqual(len(attempts), 3)
+
+    def test_proven_winner_alerts_on_smaller_bet(self):
+        state = {}
+        a = ab.check_trades(self.cfg, [trade(3000)], self.markets, state, NOW,
+                            wallet_count=lambda w: 100, record=WINNER)
+        self.assertEqual(len(a), 1)
+        self.assertIn("Proven winner: won 40 of 50 settled bets (80%), +$85,000 all-time", a[0])
+        self.assertIn("strength 🟢 strong", a[0])
+        self.assertEqual(state["scorecard"][0]["strength"], "strong")
+        self.assertEqual(state["scorecard"][0]["side"], "Yes")
+
+    def test_losing_trader_with_small_bet_is_quiet(self):
+        loser = lambda w: {"wins": 10, "losses": 30, "profit": -5000, "partial": False}
+        self.assertEqual(ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW,
+                                         wallet_count=lambda w: 100, record=loser), [])
+
+    def test_trader_record_counts_wins_and_losses(self):
+        def get(url, params):
+            if "leaderboard" in url:
+                return [{"pnl": 1234.5}]
+            return [{"asset": "a", "realizedPnl": 50}, {"asset": "b", "realizedPnl": -20},
+                    {"asset": "c", "realizedPnl": 0}]
+        ab._records.clear()
+        rec = ab.trader_record("0xabc", get=get)
+        self.assertEqual((rec["wins"], rec["losses"], rec["profit"], rec["partial"]), (1, 1, 1234.5, False))
+
+    def test_scorecard_settles_and_summarises(self):
+        state = {"scorecard": [
+            {"t": NOW, "cid": "0xA", "title": "x", "slug": "x", "side": "Yes", "price": 0.25, "strength": "strong"},
+            {"t": NOW, "cid": "0xB", "title": "y", "slug": "y", "side": "No", "price": 0.5, "strength": "medium"},
+            {"t": NOW, "cid": "0xC", "title": "z", "slug": "z", "side": "Yes", "price": 0.5, "strength": "weak"}]}
+        def get(url, params):
+            return [{"conditionId": "0xA", "closed": True, "outcomes": '["Yes","No"]', "outcomePrices": '["1","0"]'},
+                    {"conditionId": "0xB", "closed": True, "outcomes": '["Yes","No"]', "outcomePrices": '["1","0"]'},
+                    {"conditionId": "0xC", "closed": False, "outcomes": '["Yes","No"]', "outcomePrices": '["0.6","0.4"]'}]
+        ab.resolve_scorecard(state, get=get)
+        self.assertEqual([a.get("result") for a in state["scorecard"]], ["won", "lost", None])
+        text = ab.summary_text(state)
+        self.assertIn("Settled: 1 won, 1 lost (50%)", text)
+        self.assertIn("🟢 strong 1-0 · 🟡 medium 0-1", text)
+        self.assertIn("If you'd bet $100 on each: +$200", text)  # +300 on the 25c win, -100 on the loss
+        self.assertIn("Waiting to settle: 1 alert", text)
+
+    def test_score_command_only_from_own_chat(self):
+        sent, state = [], {}
+        self.cfg.telegram_token, self.cfg.telegram_chat_id = "T", "42"
+        upd = {"result": [{"update_id": 7, "message": {"chat": {"id": 42}, "text": "/score"}},
+                          {"update_id": 8, "message": {"chat": {"id": 99}, "text": "/score"}}]}
+        orig = ab.send_telegram
+        ab.send_telegram = lambda cfg, text: sent.append(text)
+        try:
+            ab.handle_commands(self.cfg, state, get=lambda url, params: upd)
+        finally:
+            ab.send_telegram = orig
+        self.assertEqual(len(sent), 1)
+        self.assertIn("Scorecard", sent[0])
+        self.assertEqual(state["tg_offset"], 8)
+
+    def test_split_bet_from_new_wallets(self):
+        state = {}
+        trades = [dict(trade(2000, wallet=f"0xn{i}", tx=f"s{i}"), outcomeIndex=0) for i in range(3)]
+        a = ab.check_split_bets(self.cfg, trades, self.markets, state, NOW, wallet_count=lambda w: 1)
+        self.assertEqual(len(a), 1)
+        self.assertIn("3 brand-new wallets bought Yes", a[0])
+        self.assertIn("$6,000 total", a[0])
+        self.assertEqual(state["scorecard"][0]["cat"], "crypto")
+        # Same group again straight away: no repeat.
+        self.assertEqual(ab.check_split_bets(self.cfg, trades, self.markets, state, NOW + 60,
+                                             wallet_count=lambda w: 1), [])
+
+    def test_split_bet_ignores_experienced_wallets(self):
+        trades = [dict(trade(2000, wallet=f"0xo{i}", tx=f"o{i}"), outcomeIndex=0) for i in range(3)]
+        self.assertEqual(ab.check_split_bets(self.cfg, trades, self.markets, {}, NOW,
+                                             wallet_count=lambda w: 50), [])
+
+    def test_late_alert_is_skipped(self):
+        self.markets["0xA"]["price"] = 0.45  # Yes already 15 points above the 30c trade
+        late = dict(trade(15000), outcomeIndex=0)
+        self.assertEqual(ab.check_trades(self.cfg, [late], self.markets, {}, NOW,
+                                         wallet_count=lambda w: 100, record=NOBODY), [])
+
+    def test_sports_price_jumps_are_skipped(self):
+        state = {}
+        self.markets["0xA"]["cat"] = "sports"
+        ab.check_price_moves(self.cfg, self.markets, state, NOW - 1800)
+        self.markets["0xA"]["price"] = 0.45
+        self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW), [])
+
+    def test_summary_by_category(self):
+        row = lambda cat, res: {"t": NOW, "cid": "x", "title": "", "slug": "", "side": "Yes",
+                                "price": 0.5, "strength": "medium", "cat": cat, "result": res}
+        state = {"scorecard": [row("politics", "won"), row("politics", "won"), row("sports", "lost"),
+                               row("sports", "won"), row("crypto", "lost")]}
+        text = ab.summary_text(state)
+        self.assertIn("Politics: 2-0 (100%) · +$200", text)
+        self.assertIn("Sports: 1-1 (50%) · +$0", text)
+        self.assertIn("Crypto: 0-1 (0%) · -$100", text)
+        self.assertLess(text.index("Politics"), text.index("Sports"))
+        self.assertLess(text.index("Sports"), text.index("Crypto"))
 
     def test_telegram_payload(self):
         sent = []

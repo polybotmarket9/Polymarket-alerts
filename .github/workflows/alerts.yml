@@ -10,10 +10,16 @@ on:
       minutes:
         description: "How long to keep checking"
         default: "330"
+      dry_run:
+        description: "Test only: print alerts instead of sending, save nothing"
+        default: "false"
 
 concurrency:
   group: alerts
   cancel-in-progress: false
+
+permissions:
+  contents: write   # to save scorecard.json back to the repository
 
 jobs:
   check:
@@ -32,9 +38,10 @@ jobs:
           python-version: "3.12"
       - name: Check Polymarket
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ inputs.dry_run != 'true' && secrets.TELEGRAM_BOT_TOKEN || '' }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           STATE_FILE: state.json
+          SCORECARD_FILE: scorecard.json
           POLL_SECONDS: 120
           BIG_TRADE_USD: ${{ vars.BIG_TRADE_USD || '10000' }}
           FRESH_WALLET_MIN_USD: ${{ vars.FRESH_WALLET_MIN_USD || '2000' }}
@@ -42,8 +49,18 @@ jobs:
           PRICE_MOVE_MAX_VOLUME_24H: ${{ vars.PRICE_MOVE_MAX_VOLUME_24H || '100000' }}
         run: python3 alert_bot.py --minutes ${{ inputs.minutes || '330' }}
       - name: Save memory of past alerts
-        if: always()
+        if: always() && inputs.dry_run != 'true'
         uses: actions/cache/save@v4
         with:
           path: state.json
           key: alert-state-${{ github.run_id }}
+      - name: Save scorecard to the repository
+        if: always() && inputs.dry_run != 'true'
+        run: |
+          [ -f scorecard.json ] || exit 0
+          git config user.name "alert-bot"
+          git config user.email "alert-bot@users.noreply.github.com"
+          git add scorecard.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update scorecard"
+          git pull --rebase -q origin main && git push -q origin HEAD:main
