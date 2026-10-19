@@ -1,0 +1,17 @@
+name: API probe (temporary)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          D=https://data-api.polymarket.com
+          W=$(curl -s "$D/trades?limit=1&filterType=CASH&filterAmount=5000" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["proxyWallet"])')
+          echo "wallet=$W"
+          for u in "closed-positions?user=$W&limit=3" "closed-positions?user=$W&limit=3&sortBy=REALIZEDPNL&sortDirection=DESC" "positions?user=$W&limit=2" "value?user=$W" "v1/leaderboard?timePeriod=all&orderBy=PNL&limit=2" "traded?user=$W" ; do
+            echo "=== $u"; curl -s -w ' [HTTP %{http_code}]' "$D/$u" | head -c 1500; echo
+          done
+          C=$(curl -s "$D/trades?limit=1" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["conditionId"])')
+          echo "=== gamma markets by condition"; curl -s "https://gamma-api.polymarket.com/markets?condition_ids=$C" | head -c 600; echo
+          echo "=== closed gamma market"; curl -s "https://gamma-api.polymarket.com/markets?closed=true&limit=1&tag_slug=crypto" | python3 -c 'import json,sys;m=json.load(sys.stdin)[0];print({k:m.get(k) for k in ["conditionId","closed","outcomes","outcomePrices","umaResolutionStatus","clobTokenIds"]})'
