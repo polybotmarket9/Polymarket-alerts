@@ -20,15 +20,14 @@ jobs:
               if len(d) < 200: break
           print("open events", len(evs), "markets", sum(len(e.get("markets", [])) for e in evs))
           print(Counter(e.get("category") for e in evs))
-          games = [e for e in evs if e.get("startTime") and "2026-10-1" in (e.get("startTime") or "")]
-          print("games soon", len(games))
           for e in evs:
-              if "nfl" in e["slug"] and ("2026-10-19" in e["slug"] or "2026-10-20" in e["slug"]):
-                  print("NFL", e["slug"], "|", e.get("title"), "|", [(m["slug"], m.get("sportsMarketType"), m.get("title"), m.get("outcomes")) for m in e.get("markets", [])][:8])
+              if "-dal-" in e["slug"] or "-gb-" in e["slug"] or "cowboys" in (e.get("title") or "").lower():
+                  print("DAL", e["slug"], "|", e.get("title"), "|", e.get("startTime"), "|", [(m["slug"], m.get("sportsMarketType"), m.get("sportsMarketTypeV2"), m.get("title"), m.get("subtitle"), m.get("outcomes"), m.get("outcomePrices")) for m in e.get("markets", [])][:12])
+          sm = Counter()
           for e in evs:
-              if "btc" in e["slug"] or "bitcoin" in (e.get("title") or "").lower():
-                  print("BTC", e["slug"], "|", e.get("title"), "|", [m.get("title") for m in e.get("markets", [])][:5])
-          for e in [e for e in evs if e.get("category") in ("politics", "finance", "technology")][:15]:
-              print("OTHER", e.get("category"), e["slug"], "|", e.get("title"), "|", [m.get("title") for m in e.get("markets", [])][:4])
+              for m in e.get("markets", []): sm[(m.get("sportsMarketTypeV2") or m.get("sportsMarketType"))] += 1
+          print(sm.most_common(20))
+          import re
+          print(Counter(re.sub(r"-.*", "", e["slug"]) for e in evs).most_common(30))
           PY
           python3 p.py
