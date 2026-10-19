@@ -62,7 +62,8 @@
   "side": "No",
   "price": 0.59,
   "strength": "weak",
-  "cat": "politics"
+  "cat": "politics",
+  "result": "lost"
  },
  {
   "t": 1792381799,
@@ -72,7 +73,8 @@
   "side": "Yes",
   "price": 0.56,
   "strength": "weak",
-  "cat": "politics"
+  "cat": "politics",
+  "result": "lost"
  },
  {
   "t": 1792381799,
@@ -167,5 +169,17 @@
   "cat": "politics",
   "us": "isrpol-pm-2026-10-27",
   "score": 28
+ },
+ {
+  "t": 1792438992,
+  "cid": "0xb5395470c9b87f5ae8ffc719c1376aa89b493adf083e01cb8064e683fbaa18fc",
+  "title": "Will Trump meet with Kim Jong Un in 2026?",
+  "slug": "who-will-trump-meet-with-in-2026",
+  "side": "No",
+  "price": 0.845,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "meet-trump-2026-12-31",
+  "score": 15
  }
 ]
