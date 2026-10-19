@@ -1,8 +1,8 @@
 name: Polymarket alerts
 
 on:
-  # Each run keeps checking every 2 minutes for ~5.5 hours. The schedule just makes
-  # sure a new run is always queued to take over (GitHub's timer alone is unreliable).
+  # Each run keeps checking every 2 minutes for ~5.5 hours, then queues the next one.
+  # The hourly schedule is a backup in case that ever fails.
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:         # lets you start it by hand from the Actions tab
@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: write   # to save scorecard.json back to the repository
+  actions: write    # to queue the next run when this one ends
 
 jobs:
   check:
@@ -64,3 +65,8 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Update scorecard"
           git pull --rebase -q origin main && git push -q origin HEAD:main
+      - name: Queue the next run
+        if: always() && inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run alerts.yml --ref main -R ${{ github.repository }}
