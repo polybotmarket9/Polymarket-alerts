@@ -42,11 +42,11 @@ class Tests(unittest.TestCase):
     def test_big_trade(self):
         alerts = ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual(len(alerts), 1)
-        self.assertIn("Big trade", alerts[0])
+        self.assertIn("Big bet", alerts[0])
 
     def test_fresh_wallet(self):
         alerts = ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW, wallet_count=lambda w: 2, record=NOBODY)
-        self.assertIn("Fresh wallet: only 1 earlier", alerts[0])
+        self.assertIn("New account: only 1 earlier", alerts[0])
 
     def test_small_or_experienced_is_quiet(self):
         trades = [trade(3000, tx="a"), trade(1000, tx="b")]
@@ -66,7 +66,7 @@ class Tests(unittest.TestCase):
         self.markets["0xA"]["price"] = 0.45
         alerts = ab.check_price_moves(self.cfg, self.markets, state, NOW)
         self.assertEqual(len(alerts), 1)
-        self.assertIn("+15 points", alerts[0])
+        self.assertIn("jumped from 30¢ to 45¢", alerts[0])
         # cooldown: no second alert straight away
         self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW + 60), [])
 
@@ -129,7 +129,8 @@ class Tests(unittest.TestCase):
         a = ab.check_trades(self.cfg, [trade(3000)], self.markets, state, NOW,
                             wallet_count=lambda w: 100, record=WINNER)
         self.assertEqual(len(a), 1)
-        self.assertIn("Proven winner: +$85k all-time on $500k traded (+17% return), +$4,000 this month", a[0])
+        self.assertIn("Proven winner", a[0])
+        self.assertIn("made $85k on Polymarket (earns 17¢ per $1 bet), up $4,000 this month", a[0])
         self.assertIn("strength 🟢 strong", a[0])
         self.assertEqual(state["scorecard"][0]["strength"], "strong")
         self.assertEqual(state["scorecard"][0]["side"], "Yes")
@@ -195,7 +196,7 @@ class Tests(unittest.TestCase):
         trades = [dict(trade(2000, wallet=f"0xn{i}", tx=f"s{i}"), outcomeIndex=0) for i in range(3)]
         a = ab.check_split_bets(self.cfg, trades, self.markets, state, NOW, wallet_count=lambda w: 1)
         self.assertEqual(len(a), 1)
-        self.assertIn("3 brand-new wallets bought Yes", a[0])
+        self.assertIn("3 brand-new accounts bought <b>Yes</b>", a[0])
         self.assertIn("$6,000 total", a[0])
         self.assertEqual(state["scorecard"][0]["cat"], "crypto")
         # Same group again straight away: no repeat.
@@ -239,7 +240,16 @@ class Tests(unittest.TestCase):
         loud = ab.check_trades(self.cfg, [trade(60000, tx="sp2")], self.markets, {}, NOW,
                                wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual((len(quiet), len(loud)), (0, 1))
-        self.assertIn("alert level $50,000", loud[0])
+        self.assertIn("over $50,000", loud[0])
+
+    def test_spread_is_explained(self):
+        self.assertEqual(ab.explain_market("Spread: Packers (-14.5)", ["Packers", "Cowboys"]),
+                         "ℹ️ Packers must win by 15+ points for “Packers” to pay. “Cowboys” pays otherwise.")
+        self.assertIn("above or below 47.5", ab.explain_market("Cowboys vs. Packers: O/U 47.5", ["Over", "Under"]))
+        self.assertIsNone(ab.explain_market("Will Bitcoin hit $150k?", ["Yes", "No"]))
+
+    def test_payout_line(self):
+        self.assertIn("64¢ a share, pays $1 if right ($100 → $156)", ab.signal_line("Cowboys", "🟢 strong", 0.64))
 
     def test_telegram_payload(self):
         sent = []

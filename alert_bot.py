@@ -29,6 +29,7 @@ import argparse
 import html
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -246,9 +247,12 @@ def record_text(rec):
     total, month = rec["all"], rec["month"]
     if not total["volume"]:
         return "no trading record yet"
-    ret = total["profit"] / total["volume"]
-    return (f"{short_money(total['profit'])} all-time on {short_money(total['volume'])[1:]} traded "
-            f"({ret:+.0%} return), {short_money(month['profit'])} this month")
+    cents = round(100 * total["profit"] / total["volume"])
+    made = "made" if total["profit"] >= 0 else "lost"
+    per = f"{'earns' if cents >= 0 else 'loses'} {abs(cents)}¢ per $1 bet"
+    trend = "up" if month["profit"] >= 0 else "down"
+    return (f"{made} {short_money(total['profit'])[1:]} on Polymarket ({per}), "
+            f"{trend} {short_money(month['profit'])[1:]} this month")
 
 
 # ---------------------------------------------------------------- rules
@@ -294,18 +298,18 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
         reasons = []
         big = cfg.big_trade_usd_sports if m.get("cat") == "sports" else cfg.big_trade_usd
         if usd >= big:
-            reasons.append(f"Big trade: ${usd:,.0f} in one go (alert level ${big:,.0f})")
+            reasons.append(f"💰 Big bet: over ${big:,.0f} in one go")
         if usd >= cfg.fresh_wallet_min_usd and t.get("side") == "BUY":
             n = wallet_count(t["proxyWallet"])
             # The trade itself counts, so "prior" = n - 1.
             if n - 1 <= cfg.fresh_wallet_max_prior_trades:
-                reasons.append(f"Fresh wallet: only {max(n - 1, 0)} earlier trades on Polymarket")
+                reasons.append(f"🆕 New account: only {max(n - 1, 0)} earlier trades on Polymarket")
         rec, winner = None, False
         if reasons or (usd >= cfg.winner_min_usd and t.get("side") == "BUY"):
             rec = record(t["proxyWallet"])
             winner = t.get("side") == "BUY" and usd >= cfg.winner_min_usd and is_proven_winner(cfg, rec)
             if winner:
-                reasons.insert(0, f"Proven winner: {record_text(rec)}")
+                reasons.insert(0, "🏆 Proven winner (record below)")
         if reasons:
             strong = winner or len(reasons) > 1
             text, side, price = format_trade_alert(t, m, usd, reasons, rec, strong)
@@ -437,36 +441,61 @@ def format_split_alert(m, title, side, n, total, paid, cfg):
     e = html.escape
     return "\n".join([
         f"🧩 <b>{e(title)}</b>{category_suffix(m)}",
-        f"{n} brand-new wallets bought {e(str(side))} within {cfg.cluster_window_min} min · "
-        f"${total:,.0f} total at ~{paid * 100:.0f}¢",
-        "• Split bet: often one person spreading a big bet across fresh accounts",
-        signal_line(side, "🟢 strong"),
+        f"{n} brand-new accounts bought <b>{e(str(side))}</b> within {cfg.cluster_window_min} min: "
+        f"${total:,.0f} total at about {paid * 100:.0f}¢",
+        "🕵️ Often one person splitting a big bet across new accounts to hide it",
+        signal_line(side, "🟢 strong", paid),
+        CAUTION,
         f'<a href="{market_link(m.get("slug"))}">Open market</a>'])
 
 
-def signal_line(side, strength):
-    return (f"👉 <b>Signal: bet {html.escape(str(side))}</b> · strength {strength}\n"
-            "<i>A hint from public trades, not a sure thing. Check the news first.</i>")
+def signal_line(side, strength, price):
+    e = html.escape
+    payout = 100 / price if price > 0 else 0
+    return (f"👉 <b>Signal: bet {e(str(side))}</b> · strength {strength}\n"
+            f"💵 {price * 100:.0f}¢ a share, pays $1 if right ($100 → ${payout:,.0f})")
+
+
+CAUTION = "<i>A hint, not a sure thing. Check the news first.</i>"
+
+
+def explain_market(title, outcomes):
+    """One plain line for sports bet types that are easy to misread."""
+    spread = re.search(r"Spread:\s*(.+?)\s*\(-(\d+(?:\.\d+)?)\)", title or "")
+    if spread:
+        fav, need = spread.group(1), int(float(spread.group(2))) + 1
+        other = other_outcome(outcomes, fav) if fav in [str(o) for o in outcomes] else "the other side"
+        return f"ℹ️ {fav} must win by {need}+ points for “{fav}” to pay. “{other}” pays otherwise."
+    total = re.search(r"O/U\s*(\d+(?:\.\d+)?)", title or "")
+    if total:
+        return f"ℹ️ Over/Under: will the total score be above or below {total.group(1)}?"
+    return None
 
 
 def format_trade_alert(t, m, usd, reasons, rec=None, strong=False):
     """Returns (message, side to bet, that side's price)."""
     e = html.escape
     # Follow the trader: buying an outcome backs it, selling it backs the other side.
-    side, price = t.get("outcome", ""), float(t.get("price", 0))
+    outcome, paid = str(t.get("outcome", "")), float(t.get("price", 0))
+    side, price = outcome, paid
     if t.get("side") == "SELL":
-        side, price = other_outcome(m.get("outcomes", []), side), 1 - price
+        side, price = other_outcome(m.get("outcomes", []), outcome), 1 - paid
+        did = f"A trader just sold <b>{e(outcome)}</b>: ${usd:,.0f} at {paid * 100:.0f}¢ (betting against it)"
+    else:
+        did = f"A trader just bought <b>{e(outcome)}</b>: ${usd:,.0f} at {paid * 100:.0f}¢"
     strength = "🟢 strong" if strong else "🟡 medium"
     title = t.get("title") or m.get("question", "Unknown market")
     wallet = t.get("proxyWallet", "")
     who = t.get("pseudonym") or t.get("name") or wallet[:10]
+    hint = explain_market(title, m.get("outcomes", []))
     lines = [f"🚨 <b>{e(title)}</b>{category_suffix(m)}",
-             f'{e(t.get("side", ""))} {e(str(t.get("outcome", "")))} at {float(t.get("price", 0)) * 100:.0f}¢ '
-             f'· ${usd:,.0f}',
-             *[f"• {e(r)}" for r in reasons],
-             signal_line(side, strength),
-             f'Trader: <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>'
-             + (f" · {e(record_text(rec))}" if rec else ""),
+             *([e(hint)] if hint else []),
+             did,
+             *[e(r) for r in reasons],
+             signal_line(side, strength, price),
+             f'👤 <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>'
+             + (f": {e(record_text(rec))}" if rec else ""),
+             CAUTION,
              f'<a href="{market_link(t.get("eventSlug") or m.get("slug"))}">Open market</a>']
     return "\n".join(lines), side, price
 
@@ -477,11 +506,15 @@ def format_price_alert(m, move, cfg):
     first = m["outcomes"][0] if m["outcomes"] else "Yes"
     side = first if move > 0 else other_outcome(m["outcomes"], first)
     price = m["price"] if move > 0 else 1 - m["price"]
+    before = m["price"] - move / 100
+    verb = "jumped" if move > 0 else "dropped"
     return "\n".join([
         f"{arrow} <b>{e(m['question'])}</b>{category_suffix(m)}",
-        f"{e(str(first))} moved {move:+.0f} points in {cfg.price_move_window_min} min, now {m['price'] * 100:.0f}¢",
-        f"• Quiet market: only ${m['volume24hr']:,.0f} traded in the last 24h",
-        signal_line(side, "🟠 weak"),
+        f"“{e(str(first))}” {verb} from {before * 100:.0f}¢ to {m['price'] * 100:.0f}¢ "
+        f"in the last {cfg.price_move_window_min} min",
+        f"🤫 Quiet market: only ${m['volume24hr']:,.0f} traded in the last day, so someone may know something",
+        signal_line(side, "🟠 weak", price),
+        CAUTION,
         f'<a href="{market_link(m["slug"])}">Open market</a>']), side, price
 
 
