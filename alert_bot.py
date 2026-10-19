@@ -60,6 +60,8 @@ class Config:
                         os.environ.get("EXCLUDE_KEYWORDS", "up or down").split(",") if k.strip()]
         self.poll_seconds = env_int("POLL_SECONDS", 60)
         self.big_trade_usd = env_float("BIG_TRADE_USD", 10000)
+        # Sports markets are far busier, so a $10k bet there is routine; use a higher bar.
+        self.big_trade_usd_sports = env_float("BIG_TRADE_USD_SPORTS", 50000)
         self.fresh_wallet_min_usd = env_float("FRESH_WALLET_MIN_USD", 2000)
         self.fresh_wallet_max_prior_trades = env_int("FRESH_WALLET_MAX_PRIOR_TRADES", 5)
         self.price_move_points = env_float("PRICE_MOVE_POINTS", 10)  # 10 = 10 cents = 10%
@@ -290,8 +292,9 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
         usd = trade_usd(t)
         m = markets.get(t.get("conditionId"), {})
         reasons = []
-        if usd >= cfg.big_trade_usd:
-            reasons.append(f"Big trade: ${usd:,.0f} in one go (alert level ${cfg.big_trade_usd:,.0f})")
+        big = cfg.big_trade_usd_sports if m.get("cat") == "sports" else cfg.big_trade_usd
+        if usd >= big:
+            reasons.append(f"Big trade: ${usd:,.0f} in one go (alert level ${big:,.0f})")
         if usd >= cfg.fresh_wallet_min_usd and t.get("side") == "BUY":
             n = wallet_count(t["proxyWallet"])
             # The trade itself counts, so "prior" = n - 1.
@@ -308,7 +311,7 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             text, side, price = format_trade_alert(t, m, usd, reasons, rec, strong)
             idx = t.get("outcomeIndex")
             side_idx = idx if t.get("side") != "SELL" else (1 - idx if idx in (0, 1) else None)
-            if price > cfg.max_signal_price:
+            if price >= cfg.max_signal_price:
                 continue
             if is_late(cfg, m, side_idx, price):
                 print(f"skipped late alert: {t.get('title')}", flush=True)
@@ -368,7 +371,7 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
         m = markets.get(cid, {})
         paid = sum(r[3] * r[2] for r in rows if r[1] in fresh) / total
         idx = int(idx) if idx.lstrip("-").isdigit() else None
-        if paid > cfg.max_signal_price or is_late(cfg, m, idx, paid):
+        if paid >= cfg.max_signal_price or is_late(cfg, m, idx, paid):
             continue
         cooldown[key] = now
         side, title = rows[-1][4], rows[-1][5] or m.get("question", "")

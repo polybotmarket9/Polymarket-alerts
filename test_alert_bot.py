@@ -232,6 +232,15 @@ class Tests(unittest.TestCase):
         self.assertLess(text.index("Politics"), text.index("Sports"))
         self.assertLess(text.index("Sports"), text.index("Crypto"))
 
+    def test_sports_needs_bigger_trade(self):
+        self.markets["0xA"]["cat"] = "sports"
+        quiet = ab.check_trades(self.cfg, [trade(15000, tx="sp1")], self.markets, {}, NOW,
+                                wallet_count=lambda w: 100, record=NOBODY)
+        loud = ab.check_trades(self.cfg, [trade(60000, tx="sp2")], self.markets, {}, NOW,
+                               wallet_count=lambda w: 100, record=NOBODY)
+        self.assertEqual((len(quiet), len(loud)), (0, 1))
+        self.assertIn("alert level $50,000", loud[0])
+
     def test_telegram_payload(self):
         sent = []
         self.cfg.telegram_token, self.cfg.telegram_chat_id = "T", "123"
