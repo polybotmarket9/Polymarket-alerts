@@ -29,7 +29,8 @@
   "side": "Lilli Tagger",
   "price": 0.8,
   "strength": "medium",
-  "cat": "sports"
+  "cat": "sports",
+  "result": "won"
  },
  {
   "t": 1792381799,
