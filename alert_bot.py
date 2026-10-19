@@ -26,6 +26,7 @@ Usage:
   python3 alert_bot.py --find-chat-id   # print chat ids that messaged your bot
 """
 import argparse
+import calendar
 import html
 import json
 import os
@@ -442,48 +443,71 @@ US_GATEWAY = "https://gateway.polymarket.us"
 US_SITE = "https://polymarket.us"
 # Game sub-markets that Polymarket US mostly doesn't list (it only has the winner).
 PROP_WORDS = re.compile(r"spread|o/u|over/under|total|\bhalf\b|\b1h\b|\b2h\b|quarter|\bmap \d|\bgame \d|"
-                        r"\bset \d|\bround \d|first to|both teams|exact score|player|points|rebounds|assists",
-                        re.I)
+                        r"\bset \d|\bround \d|first|both teams|exact score|player|points|rebounds|assists|"
+                        r"handicap|corners|cards", re.I)
 STOP_WORDS = {"will", "the", "a", "an", "of", "in", "on", "by", "be", "to", "for", "and", "or", "at", "is",
-              "vs", "who", "what", "when", "which", "before", "after", "end", "than", "more", "less",
-              "above", "below", "win", "winner", "election", "market"}
+              "vs", "who", "what", "when", "which", "before", "after", "than", "above", "price", "s", "win"}
 SYNONYMS = {"reach": "hit", "hits": "hit", "reaches": "hit", "btc": "bitcoin", "eth": "ethereum",
             "sol": "solana", "democrat": "democratic", "democrats": "democratic",
-            "republicans": "republican", "gop": "republican", "us": "usa"}
+            "republicans": "republican", "gop": "republican", "us": "usa", "greater": "above",
+            "dips": "dip", "wins": "win", "winner": "win", "champions": "champion", "finals": "champion",
+            "championship": "champion"}
 MONTHS = {m: i + 1 for i, m in enumerate(
     ["january", "february", "march", "april", "may", "june", "july", "august", "september",
      "october", "november", "december"])}
+DATE = re.compile(r"\b(before|by|in|end of|on)?\s*(" + "|".join(MONTHS) + r")\b(?:\s+(\d{1,2})(?!\d))?"
+                  r"(?:\s*(?:st|nd|rd|th))?,?(?:\s+(20\d\d))?")
+TIME = re.compile(r"\b\d{1,2}(?::\d\d)?\s*[ap]\.?m\b|\bnoon\b|\bmidnight\b")
 _us = {"at": 0, "catalog": None}
 
 
+def plain(text):
+    return (text or "").lower().replace(",", "").replace("’", "'")
+
+
 def words(text):
-    """Comparable words of a title: lower case, $150k -> 150000, synonyms merged."""
-    t = (text or "").lower().replace(",", "")
+    """Comparable words of a title: lower case, $150k -> 150000, synonyms merged. Dates are left out
+    (they're compared separately with `deadline`)."""
+    t = DATE.sub(" ", plain(text))
     t = re.sub(r"(\d+(?:\.\d+)?)\s*([km])\b",
                lambda g: f"{float(g.group(1)) * (1000 if g.group(2) == 'k' else 1e6):.0f}", t)
-    out = []
+    t = re.sub(r"(\d)\.0+\b", r"\1", t)
+    out = set()
     for w in re.findall(r"[a-z]+|\d+(?:\.\d+)?", t):
         w = SYNONYMS.get(w, w)
-        if w not in STOP_WORDS and w not in MONTHS:
-            out.append(w)
-    return set(out)
-
-
-def key_numbers(ws):
-    """Numbers that change what a market means (price levels, seat counts), not years or days."""
-    return {w for w in ws if w[0].isdigit() and float(w) >= 100 and not 2000 <= float(w) <= 2100}
+        if w not in STOP_WORDS:
+            out.add(w)
+    return out
 
 
 def deadline(text):
-    """(year, month) a market ends by, if it says so; "before January 2027" -> (2026, 12)."""
-    t = (text or "").lower()
-    g = re.search(r"(before|by|in|end of|on)?\s*(" + "|".join(MONTHS) + r")\b[^0-9]{0,3}(\d{1,2})?,?\s*(20\d\d)", t)
+    """(year, month, day) a market is about, any part None if unsaid; "before January 2027" ->
+    (2026, 12, 31). None if no date."""
+    g = DATE.search(plain(text))
     if not g:
         return None
-    y, mo = int(g.group(4)), MONTHS[g.group(2)]
-    if g.group(1) == "before":
-        y, mo = (y - 1, 12) if mo == 1 else (y, mo - 1)
-    return y, mo
+    word, mo = g.group(1), MONTHS[g.group(2)]
+    day = int(g.group(3)) if g.group(3) else None
+    year = int(g.group(4)) if g.group(4) else None
+    if word == "before" and day is None:
+        if mo == 1:
+            year, mo = (year - 1 if year else None), 12
+        else:
+            mo -= 1
+        day = calendar.monthrange(year or 2001, mo)[1]
+    return year, mo, day
+
+
+def same_date(a, b):
+    if a is None or b is None:
+        return a is b
+    if (a[2] is None) != (b[2] is None):  # a whole month vs one day
+        return False
+    return all(x is None or y is None or x == y for x, y in zip(a, b))
+
+
+def has_time(text, slug=""):
+    return bool(TIME.search(plain(text)) or re.search(r"\d{4}z$|-hr-", slug or ""))
 
 
 def fetch_us_catalog(get=http_get):
@@ -497,11 +521,12 @@ def fetch_us_catalog(get=http_get):
                 if m.get("closed") or m.get("active") is False:
                     continue
                 title = m.get("title") or m.get("question") or ev.get("title", "")
+                both = f'{ev.get("title", "")} {title}'
                 entry = {"event": ev.get("slug", ""), "event_title": ev.get("title", ""), "title": title,
                          "outcomes": [str(o) for o in as_list(m.get("outcomes"))],
-                         "type": m.get("sportsMarketTypeV2") or m.get("sportsMarketType") or "",
-                         "words": words(f'{ev.get("title", "")} {title}'),
-                         "deadline": deadline(title) or deadline(ev.get("title", ""))}
+                         "words": words(both), "title_words": words(title),
+                         "deadline": deadline(title) or deadline(ev.get("title", "")),
+                         "timed": has_time(both, ev.get("slug"))}
                 by_slug.setdefault(entry["event"], []).append(entry)
                 everything.append(entry)
         if len(events) < 200:
@@ -521,55 +546,39 @@ def us_catalog(cfg, get=http_get):
     return _us["catalog"]
 
 
-def pick_side(entry, side, question):
+def pick_side(entry, side):
     """The button to tap on a US market for this side, or None if it can't be placed there."""
     outs = {o.lower(): o for o in entry["outcomes"]}
     s = str(side).lower()
     if s in outs:
         return outs[s]
     # A US "Yes/No" market about one team or person: backing them on .com means Yes there.
-    if "yes" in outs and s not in ("yes", "no") and words(side) and words(side) <= entry["words"]:
+    if "yes" in outs and s not in ("yes", "no") and words(side) and words(side) <= entry["title_words"]:
         return outs["yes"]
     return None
 
 
 def match_us(catalog, event_slug, question, side):
     """Find where to place this bet on Polymarket US. Returns {"event", "event_title", "title",
-    "button"} or None when Polymarket US doesn't offer it."""
-    if not catalog:
+    "button"} or None when Polymarket US doesn't clearly offer the same bet."""
+    if not catalog or PROP_WORDS.search(question or ""):
         return None
     games = catalog["by_slug"].get(event_slug or "")
+    q, due, timed = words(question), deadline(question), has_time(question)
     if games is not None:
-        # Same game on both sites (sports events share slugs). Only the winner market is listed,
-        # so skip spreads, totals and other props.
-        if PROP_WORDS.search(question or ""):
-            return None
-        candidates = games
+        # Same game on both sites (sports events share slugs): only the game winner is listed.
+        hits = [e for e in games if pick_side(e, side) and e["title_words"] <= q | words(side) | e["words"]
+                and (not due or not e["deadline"] or same_date(due, e["deadline"]))]
     else:
-        candidates = catalog["all"]
-    q = words(question)
-    nums, due = key_numbers(q), deadline(question)
-    best, best_score, tie = None, 0, False
-    for e in candidates:
-        button = pick_side(e, side, question)
-        if not button or (due and e["deadline"] and due != e["deadline"]):
-            continue
-        if games is not None:
-            # Same event: the market whose title fits the question best (usually there's one).
-            score = 1 + len(q & e["words"])
-        else:
-            shared = q & e["words"]
-            if len(shared) < 2 or key_numbers(e["words"]) != nums:
-                continue
-            score = len(shared) / max(len(q), 1)
-            if score < 0.6 or len(shared) / max(len(e["words"]), 1) < 0.3:
-                continue
-        if score > best_score:
-            best, best_score, tie = dict(e, button=button), score, False
-        elif score == best_score:
-            tie = True
-    # Two equally good fits (e.g. different deadlines): don't guess.
-    return None if tie else best
+        # Elsewhere, every word of the question (names, numbers, "playoffs", "not"...) must appear
+        # on the US market, the US market's own words must all be in the question, and the dates
+        # must agree. Anything looser picked the wrong person, team or deadline in testing.
+        hits = [e for e in catalog["all"]
+                if q <= e["words"] and e["title_words"] <= q and len(q) >= 2
+                and same_date(due, e["deadline"]) and timed == e["timed"] and pick_side(e, side)]
+    if len(hits) != 1:
+        return None  # nothing, or several equally good fits: don't guess
+    return dict(hits[0], button=pick_side(hits[0], side))
 
 
 def us_link(slug):
@@ -612,7 +621,7 @@ def how_to(place, side, strength, price, slug, title):
         app, link, name = "the Polymarket US app (or polymarket.us)", us_link(place["event"]), place["event_title"]
         button = place["button"]
         # Single-market games: the market title just repeats the game, so skip "find ...".
-        same = words(place["title"]) <= words(place["event_title"]) or len(place["title"]) < 3
+        same = words(place["title"]) <= words(place["event_title"]) and not deadline(place["title"])
         market = "" if same else f"Find “{e(place['title'])}” and tap "
     else:
         app, link, name, button = "Polymarket", market_link(slug), title, side

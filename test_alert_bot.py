@@ -39,6 +39,12 @@ US_EVENTS = [
         {"slug": "btc-150k-dec", "title": "Before January 2027", "outcomes": '["Yes","No"]'}]},
     {"slug": "btc-200k", "title": "When will Bitcoin hit $200k?", "markets": [
         {"slug": "btc-200k-dec", "title": "Before February 2027", "outcomes": '["Yes","No"]'}]},
+    {"slug": "usp-2028", "title": "2028 US Presidential Election Winner", "markets": [
+        {"slug": "usp-pb", "title": "Pete Buttigieg", "outcomes": '["Yes","No"]'}]},
+    {"slug": "nba-champ-2027", "title": "2027 NBA Champion", "markets": [
+        {"slug": "nba-ind", "title": "Indiana Pacers", "outcomes": '["Yes","No"]'}]},
+    {"slug": "meet-trump", "title": "Who will Trump meet in 2026?", "markets": [
+        {"slug": "meet-putin", "title": "Vladimir Putin", "outcomes": '["Yes","No"]'}]},
 ]
 
 
@@ -312,6 +318,17 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $200,000 by December 31, 2026?", "Yes"))
         self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $150,000 by March 31, 2026?", "Yes"))
         self.assertIsNone(ab.match_us(cat, "x", "Will Ethereum flip Bitcoin in 2026?", "Yes"))
+
+    def test_us_rejects_near_misses(self):
+        cat = self.us_catalog()
+        self.assertIsNone(ab.match_us(cat, "x", "Will Pete Hegseth win the 2028 US Presidential Election?", "No"))
+        self.assertIsNone(ab.match_us(cat, "x", "Will the Indiana Pacers make the 2027 NBA Playoffs?", "No"))
+        self.assertIsNone(ab.match_us(cat, "x", "Will Trump and Putin not meet?", "No"))
+        self.assertIsNone(ab.match_us(cat, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles: Team to Score First", "Eagles"))
+        hit = ab.match_us(cat, "x", "Will Pete Buttigieg win the 2028 US Presidential Election?", "No")
+        self.assertEqual((hit["event"], hit["button"]), ("usp-2028", "No"))
+        hit = ab.match_us(cat, "x", "Will the Indiana Pacers win the 2027 NBA Finals?", "Yes")
+        self.assertEqual(hit["event"], "nba-champ-2027")
 
     def test_us_only_drops_and_steps(self):
         cat = self.us_catalog()

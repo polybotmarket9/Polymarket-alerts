@@ -22,7 +22,7 @@ jobs:
                       hits.append((m["cat"], m["question"], side, h["event"], h["title"], h["button"])); by[m["cat"]] += 1
           print("matched sides by category", by)
           random.seed(1)
-          for row in random.sample(hits, min(60, len(hits))):
+          for row in random.sample(hits, min(80, len(hits))):
               print(" | ".join(map(str, row)))
           PY
           python3 p.py
