@@ -8,5 +8,75 @@
   "price": 0.64,
   "strength": "strong",
   "cat": "sports"
+ },
+ {
+  "t": 1792381183,
+  "cid": "0xea5c403a1c7b07019ce25a4e9d36c894acb9cda625c4701d3c756083a5cba822",
+  "title": "Will XRP dip to $1.25 on October 18?",
+  "slug": "what-price-will-xrp-hit-on-october-18-2026",
+  "side": "Yes",
+  "price": 0.133,
+  "strength": "weak",
+  "cat": "crypto"
+ },
+ {
+  "t": 1792381310,
+  "cid": "0xe6462bd8d87ca0272f362445cf08c9365e85c32884d536204704d62b5b903f2b",
+  "title": "Japan Women's Open: Lilli Tagger vs Liudmila Samsonova",
+  "slug": "wta-tagger-samsono-2026-10-18",
+  "side": "Lilli Tagger",
+  "price": 0.8,
+  "strength": "medium",
+  "cat": "sports"
+ },
+ {
+  "t": 1792381799,
+  "cid": "0x7a86da24060cc57d1cb30df9339815f9bff25fb2542f71a42a0a2de755af79ff",
+  "title": "Will Bitcoin reach $83,000 on October 18?",
+  "slug": "what-price-will-bitcoin-hit-on-october-18-2026",
+  "side": "No",
+  "price": 0.99,
+  "strength": "weak",
+  "cat": "crypto"
+ },
+ {
+  "t": 1792381799,
+  "cid": "0x894894b5bd735d6ba91c8671581b40b34272bad7966b474d26478166b58c9e65",
+  "title": "Will Ethereum reach $2,450 on October 18?",
+  "slug": "what-price-will-ethereum-hit-on-october-18-2026",
+  "side": "No",
+  "price": 0.9795,
+  "strength": "weak",
+  "cat": "crypto"
+ },
+ {
+  "t": 1792381799,
+  "cid": "0xd299d0a0ce26e42af4edc4e429ee3d8107d3e497ae824fac11e8abc89670fbeb",
+  "title": "Will Elon Musk post 40-64 tweets from October 17 to October 19, 2026?",
+  "slug": "elon-musk-of-tweets-october-17-october-19-2026",
+  "side": "No",
+  "price": 0.59,
+  "strength": "weak",
+  "cat": "politics"
+ },
+ {
+  "t": 1792381799,
+  "cid": "0x6e08a4716e2a71763865258f78210684b09a146429a48a87fb6f3a3bee1bb81f",
+  "title": "Will Elon Musk post 65-89 tweets from October 17 to October 19, 2026?",
+  "slug": "elon-musk-of-tweets-october-17-october-19-2026",
+  "side": "Yes",
+  "price": 0.56,
+  "strength": "weak",
+  "cat": "politics"
+ },
+ {
+  "t": 1792381799,
+  "cid": "0x0aeafd983d87efa8403ca903513950b4b1906f442219c28e5486b66b87545a69",
+  "title": "Will Together win the third-most seats in the 2026 Israeli legislative election?",
+  "slug": "israeli-legislative-election-3rd-place",
+  "side": "No",
+  "price": 0.275,
+  "strength": "weak",
+  "cat": "politics"
  }
 ]
