@@ -82,6 +82,20 @@ class Tests(unittest.TestCase):
         self.markets["0xA"]["price"] = 0.45
         self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW), [])
 
+    def test_signal_side(self):
+        a = ab.check_trades(self.cfg, [trade(15000)], self.markets, {}, NOW, wallet_count=lambda w: 1)[0]
+        self.assertIn("Signal: bet Yes</b> · strength 🟢 strong", a)
+        sell = trade(12000, side="SELL", tx="s")
+        a = ab.check_trades(self.cfg, [sell], self.markets, {}, NOW, wallet_count=lambda w: 100)[0]
+        self.assertIn("Signal: bet No</b> · strength 🟡 medium", a)
+
+    def test_price_drop_signals_other_side(self):
+        state = {}
+        ab.check_price_moves(self.cfg, self.markets, state, NOW - 1800)
+        self.markets["0xA"]["price"] = 0.15
+        a = ab.check_price_moves(self.cfg, self.markets, state, NOW)[0]
+        self.assertIn("Signal: bet No</b> · strength 🟠 weak", a)
+
     def test_telegram_payload(self):
         sent = []
         self.cfg.telegram_token, self.cfg.telegram_chat_id = "T", "123"

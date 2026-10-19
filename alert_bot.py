@@ -217,8 +217,24 @@ def market_link(slug):
     return f"https://polymarket.com/event/{slug}" if slug else "https://polymarket.com"
 
 
+def other_outcome(outcomes, outcome):
+    """The opposite side of a two-outcome market, e.g. Yes -> No."""
+    rest = [o for o in outcomes if str(o) != str(outcome)]
+    return rest[0] if len(outcomes) == 2 and rest else f"not {outcome}"
+
+
+def signal_line(side, strength):
+    return (f"👉 <b>Signal: bet {html.escape(str(side))}</b> · strength {strength}\n"
+            "<i>A hint from public trades, not a sure thing. Check the news first.</i>")
+
+
 def format_trade_alert(t, m, usd, reasons):
     e = html.escape
+    # Follow the trader: buying an outcome backs it, selling it backs the other side.
+    side = t.get("outcome", "")
+    if t.get("side") == "SELL":
+        side = other_outcome(m.get("outcomes", []), side)
+    strength = "🟢 strong" if len(reasons) > 1 else "🟡 medium"
     title = t.get("title") or m.get("question", "Unknown market")
     wallet = t.get("proxyWallet", "")
     who = t.get("pseudonym") or t.get("name") or wallet[:10]
@@ -226,6 +242,7 @@ def format_trade_alert(t, m, usd, reasons):
              f'{e(t.get("side", ""))} {e(str(t.get("outcome", "")))} at {float(t.get("price", 0)) * 100:.0f}¢ '
              f'· ${usd:,.0f}',
              *[f"• {e(r)}" for r in reasons],
+             signal_line(side, strength),
              f'Trader: <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>',
              f'<a href="{market_link(t.get("eventSlug") or m.get("slug"))}">Open market</a>']
     return "\n".join(lines)
@@ -235,10 +252,12 @@ def format_price_alert(m, move, cfg):
     e = html.escape
     arrow = "📈" if move > 0 else "📉"
     first = m["outcomes"][0] if m["outcomes"] else "Yes"
+    side = first if move > 0 else other_outcome(m["outcomes"], first)
     return "\n".join([
         f"{arrow} <b>{e(m['question'])}</b>",
         f"{e(str(first))} moved {move:+.0f} points in {cfg.price_move_window_min} min, now {m['price'] * 100:.0f}¢",
         f"• Quiet market: only ${m['volume24hr']:,.0f} traded in the last 24h",
+        signal_line(side, "🟠 weak"),
         f'<a href="{market_link(m["slug"])}">Open market</a>'])
 
 
