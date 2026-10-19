@@ -9,8 +9,14 @@ jobs:
           D=https://data-api.polymarket.com
           W=$(curl -s "$D/trades?limit=1&filterType=CASH&filterAmount=5000" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["proxyWallet"])')
           echo "wallet=$W"
-          for u in "closed-positions?user=$W&limit=3" "closed-positions?user=$W&limit=3&sortBy=REALIZEDPNL&sortDirection=DESC" "positions?user=$W&limit=2" "value?user=$W" "v1/leaderboard?timePeriod=all&orderBy=PNL&limit=2" "traded?user=$W" ; do
-            echo "=== $u"; curl -s -w ' [HTTP %{http_code}]' "$D/$u" | head -c 1500; echo
+          for u in "closed-positions?user=$W&limit=5&sortBy=TIMESTAMP&sortDirection=DESC" "closed-positions?user=$W&limit=500&offset=0" "v1/leaderboard?timePeriod=all&orderBy=PNL&user=$W" "v1/leaderboard?timePeriod=month&orderBy=PNL&limit=1&user=$W" ; do
+            echo "=== $u"; curl -s -w ' [HTTP %{http_code}]' "$D/$u" | python3 -c 'import sys,json
+raw=sys.stdin.read(); body,_,code=raw.rpartition(" [HTTP ")
+try:
+  d=json.loads(body)
+  if isinstance(d,list): print("n=",len(d),"code",code, [ (x.get("realizedPnl"),x.get("timestamp"),x.get("pnl"),x.get("userName")) for x in d[:6]])
+  else: print(d)
+except Exception as e: print(raw[:400])'
           done
           C=$(curl -s "$D/trades?limit=1" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["conditionId"])')
           echo "=== gamma markets by condition"; curl -s "https://gamma-api.polymarket.com/markets?condition_ids=$C" | head -c 600; echo
