@@ -93,7 +93,8 @@
   "price": 0.5794,
   "strength": "strong",
   "cat": "sports",
-  "us": "wta-elimer-leyfer-2026-10-19"
+  "us": "wta-elimer-leyfer-2026-10-19",
+  "result": "lost"
  },
  {
   "t": 1792382478,
@@ -104,7 +105,8 @@
   "price": 0.5572,
   "strength": "strong",
   "cat": "sports",
-  "us": "wta-elimer-leyfer-2026-10-19"
+  "us": "wta-elimer-leyfer-2026-10-19",
+  "result": "lost"
  },
  {
   "t": 1792382478,
@@ -115,7 +117,8 @@
   "price": 0.578,
   "strength": "strong",
   "cat": "sports",
-  "us": "wta-elimer-leyfer-2026-10-19"
+  "us": "wta-elimer-leyfer-2026-10-19",
+  "result": "lost"
  },
  {
   "t": 1792382729,
@@ -126,7 +129,8 @@
   "price": 0.44,
   "strength": "strong",
   "cat": "sports",
-  "us": "wta-elimer-leyfer-2026-10-19"
+  "us": "wta-elimer-leyfer-2026-10-19",
+  "result": "won"
  },
  {
   "t": 1792383339,
@@ -137,6 +141,19 @@
   "price": 0.66,
   "strength": "medium",
   "cat": "sports",
-  "us": "wta-elimer-leyfer-2026-10-19"
+  "us": "wta-elimer-leyfer-2026-10-19",
+  "result": "lost"
+ },
+ {
+  "t": 1792401715,
+  "cid": "0xce610556ec78cfd7894f4169d91fe70e31c2fb49f927fffd7fe7d06530f88d56",
+  "title": "Will David Lisnard win the 2027 French presidential election?",
+  "slug": "next-french-presidential-election",
+  "side": "No",
+  "price": 0.883,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "pres-fra-2027-04-11",
+  "score": 53
  }
 ]
