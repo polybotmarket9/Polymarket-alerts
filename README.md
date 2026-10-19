@@ -16,7 +16,24 @@ Very short-term "Bitcoin Up or Down" markets are skipped because bots trade them
 nonstop. Every number above can be changed (see `.env.example`). If you get too many
 alerts, raise the dollar amounts; too few, lower them.
 
-## Setup (about 5 minutes)
+## Running on GitHub (no computer needed)
+
+This repository checks Polymarket every 5 minutes by itself (see the **Actions** tab).
+It needs one secret:
+
+1. In Telegram, send any message to your bot.
+2. Open **Settings > Secrets and variables > Actions > New repository secret**
+   ([direct link](https://github.com/polybotmarket9/Polymarket-alerts/settings/secrets/actions/new)),
+   name it `TELEGRAM_BOT_TOKEN` and paste the token from BotFather.
+
+The bot finds your chat on its own and sends a "connected" message on its first run.
+If it ever stops messaging you, send your bot a message again.
+
+To change a threshold, add a repository **variable** (same page, Variables tab), e.g.
+`BIG_TRADE_USD` = `25000`. GitHub pauses scheduled runs if the repository has no
+activity for 60 days and emails you a button to turn them back on.
+
+## Setup on a computer instead
 
 1. **Make a Telegram bot.** In Telegram, message `@BotFather`, send `/newbot`, pick a
    name. It gives you a token. Keep it private; don't paste it into chats.
