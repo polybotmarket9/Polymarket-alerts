@@ -334,10 +334,13 @@ class Tests(unittest.TestCase):
         now = 1_800_000_000  # Fri, 15 Jan 2027 08:00:00 GMT
         asked = []
         get = lambda url, params: asked.append(params["q"]) or rss
-        news = ab.fetch_news("Will Bitcoin hit $150k by December 31?", 48, get, now)
-        self.assertEqual(asked, ["Bitcoin when:2d"])
+        self.assertIsNone(ab.fetch_news("Will Bitcoin hit $150k by December 31?", 48, get, now))
+        news = ab.fetch_news("Will Bitcoin ETF approval happen?", 48, get, now)
+        self.assertEqual(asked, ["Bitcoin ETF when:2d"])
         self.assertEqual([(n["title"], n["source"], ab.ago(n["age"])) for n in news],
                          [("Bitcoin jumps on ETF news", "Reuters", "1h ago")])
+        self.assertFalse(ab.is_about("Trump defends sanctions waiver", "Taylor Rogers White House Press Secretary"))
+        self.assertEqual(ab.news_query("Bab el-Mandeb Strait closed by December 31?"), "Bab el-Mandeb Strait")
         self.assertEqual(ab.news_query("Will Pete Buttigieg win the 2028 US Presidential Election?"),
                          "Pete Buttigieg US Presidential Election")
 

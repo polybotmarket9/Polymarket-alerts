@@ -624,7 +624,7 @@ _news_cache = {}
 def news_query(title):
     """Search words for a market: its names and proper nouns ("Pete Buttigieg Presidential Election")."""
     t = re.sub(r"\(.*?\)|[?:!,\"“”]", " ", title or "")
-    names = [w for w in t.split() if w[:1].isupper() and w.lower().strip(".'") not in NEWS_SKIP]
+    names = [w for w in t.split() if any(c.isupper() for c in w) and w.lower().strip(".'") not in NEWS_SKIP]
     return " ".join(names[:6])
 
 
@@ -636,12 +636,21 @@ def ago(seconds):
     return f"{seconds // 86400:.0f}d ago"
 
 
+def key_terms(q):
+    return {w for w in re.findall(r"[a-z0-9]+", q.lower()) if len(w) > 2}
+
+
+def is_about(headline, q):
+    terms = key_terms(q)
+    return len(terms & set(re.findall(r"[a-z0-9]+", headline.lower()))) >= min(2, len(terms))
+
+
 def fetch_news(title, hours=48, get_text=http_get_text, now=None):
     """Up to 3 newest headlines about a market from the last `hours`: [{"title", "source", "link",
     "age"}]. [] means no news found; None means the search didn't work (or had nothing to search)."""
     q = news_query(title)
-    if not q:
-        return None
+    if len(key_terms(q)) < 2:
+        return None  # one word like "Bitcoin" is always in the news, so news timing says nothing
     now = now or time.time()
     cached = _news_cache.get(q)
     if cached and now - cached[0] < 600:
@@ -664,6 +673,9 @@ def fetch_news(title, hours=48, get_text=http_get_text, now=None):
         headline = it.findtext("title", "")
         if source and headline.endswith(" - " + source):
             headline = headline[: -len(source) - 3]
+        # Google matches loosely; keep only headlines that actually name the market's subject.
+        if not is_about(headline, q):
+            continue
         items.append({"title": headline, "source": source, "link": it.findtext("link", ""), "age": age})
     items = sorted(items, key=lambda i: i["age"])[:3]
     _news_cache[q] = (now, items)
