@@ -55,6 +55,8 @@ class Config:
         self.price_move_points = env_float("PRICE_MOVE_POINTS", 10)  # 10 = 10 cents = 10%
         self.price_move_window_min = env_int("PRICE_MOVE_WINDOW_MIN", 60)
         self.price_move_max_volume_24h = env_float("PRICE_MOVE_MAX_VOLUME_24H", 100000)
+        # Markets with almost no trading "move" on stale quotes alone; ignore those.
+        self.price_move_min_volume_24h = env_float("PRICE_MOVE_MIN_VOLUME_24H", 1000)
         self.max_markets = env_int("MAX_MARKETS", 300)
         self.state_file = os.environ.get(
             "STATE_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json"))
@@ -195,7 +197,8 @@ def check_price_moves(cfg, markets, state, now):
         if abs(move) < cfg.price_move_points and m.get("one_hour_change") is not None \
                 and cfg.price_move_window_min == 60:
             move = float(m["one_hour_change"]) * 100  # use Polymarket's own 1h change if bigger
-        if abs(move) < cfg.price_move_points or m["volume24hr"] > cfg.price_move_max_volume_24h:
+        if abs(move) < cfg.price_move_points or \
+                not cfg.price_move_min_volume_24h <= m["volume24hr"] <= cfg.price_move_max_volume_24h:
             continue
         if now - cooldown.get(cid, 0) < window:
             continue

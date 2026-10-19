@@ -75,6 +75,13 @@ class Tests(unittest.TestCase):
         self.markets["0xA"]["price"] = 0.45
         self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW), [])
 
+    def test_price_jump_ignored_on_dead_market(self):
+        state = {}
+        self.markets["0xA"]["volume24hr"] = 0
+        ab.check_price_moves(self.cfg, self.markets, state, NOW - 1800)
+        self.markets["0xA"]["price"] = 0.45
+        self.assertEqual(ab.check_price_moves(self.cfg, self.markets, state, NOW), [])
+
     def test_telegram_payload(self):
         sent = []
         self.cfg.telegram_token, self.cfg.telegram_chat_id = "T", "123"

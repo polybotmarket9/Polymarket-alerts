@@ -10,7 +10,7 @@ signal worth a look, not proof of anything.
 |---|---|---|
 | Big trade | one trade of **$10,000+** | Someone put a lot of money down at once. |
 | Fresh wallet | a **$2,000+** buy from a wallet with **5 or fewer** earlier trades | A new account showing up with real money is a classic insider pattern. |
-| Price jump | price moves **10+ points** (e.g. 30¢ to 40¢) within **60 min** on a market that traded **under $100k** in the last day | A quiet market suddenly moving hard. |
+| Price jump | price moves **10+ points** (e.g. 30¢ to 40¢) within **60 min** on a market that traded **between $1k and $100k** in the last day | A quiet market suddenly moving hard. |
 
 Very short-term "Bitcoin Up or Down" markets are skipped because bots trade them
 nonstop. Every number above can be changed (see `.env.example`). If you get too many
