@@ -6,18 +6,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - run: |
+          cat > s.py <<'PY'
+          import sys, json
+          raw = sys.stdin.read()
+          try:
+              d = json.loads(raw)
+              if isinstance(d, list):
+                  print("n=", len(d), [(x.get("realizedPnl"), x.get("timestamp"), x.get("pnl"), x.get("userName")) for x in d[:6]])
+              else:
+                  print(d)
+          except Exception:
+              print(raw[:400])
+          PY
           D=https://data-api.polymarket.com
           W=$(curl -s "$D/trades?limit=1&filterType=CASH&filterAmount=5000" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["proxyWallet"])')
           echo "wallet=$W"
-          for u in "closed-positions?user=$W&limit=5&sortBy=TIMESTAMP&sortDirection=DESC" "closed-positions?user=$W&limit=500&offset=0" "v1/leaderboard?timePeriod=all&orderBy=PNL&user=$W" "v1/leaderboard?timePeriod=month&orderBy=PNL&limit=1&user=$W" ; do
-            echo "=== $u"; curl -s -w ' [HTTP %{http_code}]' "$D/$u" | python3 -c 'import sys,json
-raw=sys.stdin.read(); body,_,code=raw.rpartition(" [HTTP ")
-try:
-  d=json.loads(body)
-  if isinstance(d,list): print("n=",len(d),"code",code, [ (x.get("realizedPnl"),x.get("timestamp"),x.get("pnl"),x.get("userName")) for x in d[:6]])
-  else: print(d)
-except Exception as e: print(raw[:400])'
+          for u in "closed-positions?user=$W&limit=5&sortBy=TIMESTAMP&sortDirection=DESC" "closed-positions?user=$W&limit=500&offset=0" "v1/leaderboard?timePeriod=all&orderBy=PNL&user=$W" "v1/leaderboard?timePeriod=month&orderBy=PNL&limit=1&user=$W"; do
+            echo "=== $u"; curl -s "$D/$u" | python3 s.py
           done
-          C=$(curl -s "$D/trades?limit=1" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["conditionId"])')
-          echo "=== gamma markets by condition"; curl -s "https://gamma-api.polymarket.com/markets?condition_ids=$C" | head -c 600; echo
-          echo "=== closed gamma market"; curl -s "https://gamma-api.polymarket.com/markets?closed=true&limit=1&tag_slug=crypto" | python3 -c 'import json,sys;m=json.load(sys.stdin)[0];print({k:m.get(k) for k in ["conditionId","closed","outcomes","outcomePrices","umaResolutionStatus","clobTokenIds"]})'
