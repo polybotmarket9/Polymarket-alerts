@@ -1,0 +1,20 @@
+name: Test Grok
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Market title to ask Grok about
+        default: "Will Bitcoin reach $100,000 in October?"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          TITLE: ${{ inputs.title }}
+        run: python3 alert_bot.py --test-grok "$TITLE"

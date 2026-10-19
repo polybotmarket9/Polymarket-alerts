@@ -33,6 +33,12 @@ the price (+10 long shot, −5 heavy favorite). Price-jump alerts are capped at 
 weekly scorecard groups results by score band. It's a hint from public trades, not a
 guarantee.
 
+**Grok X check** (optional, needs `XAI_API_KEY` as a repository secret). On alerts scoring
+60+ (`GROK_MIN_SCORE`), the bot asks Grok to search X for posts from the last day about the
+market. Nobody talking about it yet: +10. X already buzzing within the last 2 hours: −10.
+The alert gets a one-line "Grok on X" summary. At most 10 checks an hour
+(`GROK_MAX_PER_HOUR`); model set by `GROK_MODEL`. Test it with the "Test Grok" workflow.
+
 **Big bets only** (`BIG_BETS_ONLY=true`, the default). Every alert needs a bet of
 $10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
 winner behind the big bet raises its score.

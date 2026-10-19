@@ -106,6 +106,12 @@ class Config:
         # strong, except in sports, where small matches rarely make the news anyway.
         self.news = os.environ.get("NEWS", "true").lower() not in ("0", "false", "no")
         self.news_hours = env_float("NEWS_HOURS", 48)
+        # Grok X check: on alerts scoring GROK_MIN_SCORE+, ask Grok (xAI) what X is saying about the
+        # market. Off unless XAI_API_KEY is set. Capped per hour to keep the cost small.
+        self.xai_key = os.environ.get("XAI_API_KEY", "")
+        self.grok_model = os.environ.get("GROK_MODEL", "grok-4.5")
+        self.grok_min_score = env_int("GROK_MIN_SCORE", 60)
+        self.grok_max_per_hour = env_int("GROK_MAX_PER_HOUR", 10)
         self.scorecard_file = os.environ.get(
             "SCORECARD_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard.json"))
         self.state_file = os.environ.get(
@@ -304,7 +310,7 @@ def is_late(cfg, m, outcome_index, paid):
     return now_price is not None and (now_price - paid) * 100 > cfg.late_max_points
 
 
-def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None, us=None, news=None):
+def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None, us=None, news=None, buzz=None):
     """Return a list of alert messages for trades not seen before. `us(event_slug, question, side)`
     says where to place the bet on Polymarket US; alerts it can't place are dropped."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
@@ -360,7 +366,8 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             repeats[key] = now
             headlines = news(title) if news else None
             score, why = trade_score(cfg, t, m, usd, price, rec, winner, prior, headlines)
-            alerts.append(format_trade_alert(t, m, usd, score, why, rec, place))
+            score, why, x_line = x_check(cfg, state, now, title, side, score, why, buzz)
+            alerts.append(format_trade_alert(t, m, usd, score, why, rec, place, x_line))
             log_alert(state, now, t.get("conditionId"), title, slug, side, price,
                       band(score), m.get("cat"), place, score)
     # Forget old entries so the state file stays small.
@@ -370,7 +377,7 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
     return alerts
 
 
-def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=None, news=None):
+def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=None, news=None, buzz=None):
     """Alert when several brand-new wallets back the same side of a market in a short time."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
     window = cfg.cluster_window_min * 60
@@ -420,7 +427,8 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=Non
             print(f"skipped, not on Polymarket US: {title} ({side})", flush=True)
             continue
         score, why = split_score(cfg, m, len(fresh), total, paid, news(title) if news else None)
-        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg, score, why, place))
+        score, why, x_line = x_check(cfg, state, now, title, side, score, why, buzz)
+        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg, score, why, place, x_line))
         log_alert(state, now, cid, title, m.get("slug", ""), side, paid, band(score), m.get("cat"), place, score)
     for k in [k for k, v in seen.items() if now - v > 86400]:
         del seen[k]
@@ -429,7 +437,7 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=Non
     return alerts
 
 
-def check_price_moves(cfg, markets, state, now, us=None, news=None):
+def check_price_moves(cfg, markets, state, now, us=None, news=None, buzz=None):
     """Alert when a low-volume market's price moves PRICE_MOVE_POINTS within the window."""
     history = state.setdefault("prices", {})
     cooldown = state.setdefault("price_alerted", {})
@@ -457,7 +465,8 @@ def check_price_moves(cfg, markets, state, now, us=None, news=None):
         if us and not place:
             continue
         score, why = price_score(cfg, m, move, price, news(m["question"]) if news else None)
-        alerts.append(format_price_alert(m, move, cfg, score, why, place))
+        score, why, x_line = x_check(cfg, state, now, m["question"], side, score, why, buzz)
+        alerts.append(format_price_alert(m, move, cfg, score, why, place, x_line))
         log_alert(state, now, cid, m["question"], m["slug"], side, price, band(score), m.get("cat"), place, score)
     for cid in [c for c in history if c not in markets]:
         del history[cid]
@@ -772,6 +781,80 @@ def price_score(cfg, m, move, price, headlines):
                             (10 if jump >= 20 else 5, f"Moved {jump:.0f} points in {cfg.price_move_window_min} min"),
                             news_factor(headlines, m.get("cat")), price_factor(price)], cap=60)
 
+# ---------------------------------------------------------------- Grok X check
+
+XAI_URL = "https://api.x.ai/v1/responses"
+GROK_PROMPT = """Search X (Twitter) for posts from the last 24 hours about this prediction market:
+"{title}" (someone just bet on "{side}").
+Is anyone on X talking about it, and is there any breaking news, rumor or leak that would explain the bet?
+Reply with only JSON, no other text:
+{{"buzz": "none" | "some" | "lots", "newest_minutes_ago": <minutes since the newest relevant post, or null>,
+  "summary": "<one short plain sentence a beginner understands, max 25 words>"}}"""
+
+
+def http_post_auth(url, payload, key, timeout=90):
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def response_text(resp):
+    """The model's text from an xAI Responses API reply."""
+    if resp.get("output_text"):
+        return resp["output_text"]
+    parts = []
+    for item in resp.get("output", []):
+        for c in item.get("content", []) or []:
+            if c.get("type") in ("output_text", "text") and c.get("text"):
+                parts.append(c["text"])
+    return "\n".join(parts)
+
+
+def grok_buzz(cfg, title, side, now=None, post=http_post_auth):
+    """Ask Grok what X is saying about a market: {"buzz", "newest_minutes_ago", "summary"} or None."""
+    day = time.strftime("%Y-%m-%d", time.gmtime((now or time.time()) - 86400))
+    try:
+        resp = post(XAI_URL, {"model": cfg.grok_model,
+                              "input": GROK_PROMPT.format(title=title, side=side),
+                              "tools": [{"type": "x_search", "from_date": day}]}, cfg.xai_key)
+        text = response_text(resp)
+        found = json.loads(text[text.index("{"): text.rindex("}") + 1])
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
+        print(f"Grok X check failed: {err}", file=sys.stderr, flush=True)
+        return None
+    if found.get("buzz") not in ("none", "some", "lots"):
+        return None
+    return found
+
+
+def x_check(cfg, state, now, title, side, score, why, buzz=None):
+    """On high-scoring alerts, add what X is saying. Returns (score, why, line for the alert or None)."""
+    if buzz is None:
+        if not cfg.xai_key:
+            return score, why, None
+        buzz = lambda title, side: grok_buzz(cfg, title, side, now)
+    if score < cfg.grok_min_score:
+        return score, why, None
+    calls = [c for c in state.get("grok_calls", []) if now - c < 3600]
+    if len(calls) >= cfg.grok_max_per_hour:
+        return score, why, None
+    state["grok_calls"] = calls + [now]
+    found = buzz(title, side)
+    if not found:
+        return score, why, None
+    newest = found.get("newest_minutes_ago")
+    factor = None
+    if found["buzz"] == "none":
+        factor = (10, "Nobody on X is talking about this yet")
+    elif found["buzz"] == "lots" and isinstance(newest, (int, float)) and newest <= 120:
+        factor = (-10, "X is already buzzing about it: the trader may be reacting")
+    if factor:
+        why = why + [factor]
+        score = max(0, min(100, score + factor[0]))
+    line = f"𝕏 <b>Grok on X:</b> {html.escape(str(found.get('summary', '')))}" if found.get("summary") else None
+    return score, why, line
+
 # ---------------------------------------------------------------- messages
 
 def market_link(slug):
@@ -788,13 +871,14 @@ def category_suffix(m):
     return f" · {category_name(m['cat'])}" if m.get("cat") else ""
 
 
-def format_split_alert(m, title, side, n, total, paid, cfg, score, why, place=None):
+def format_split_alert(m, title, side, n, total, paid, cfg, score, why, place=None, x_line=None):
     e = html.escape
     return "\n".join([
         f"🧩 <b>{e(title)}</b>{category_suffix(m)}",
         f"{n} brand-new accounts bought <b>{e(str(side))}</b> within {cfg.cluster_window_min} min: "
         f"${total:,.0f} total at about {paid * 100:.0f}¢",
         score_lines(score, why),
+        *([x_line] if x_line else []),
         how_to(place, side, paid, m.get("slug"), title),
         CAUTION])
 
@@ -847,7 +931,7 @@ def follow_side(t, m):
     return outcome, paid
 
 
-def format_trade_alert(t, m, usd, score, why, rec=None, place=None):
+def format_trade_alert(t, m, usd, score, why, rec=None, place=None, x_line=None):
     e = html.escape
     outcome, paid = str(t.get("outcome", "")), float(t.get("price", 0))
     side, price = follow_side(t, m)
@@ -865,6 +949,7 @@ def format_trade_alert(t, m, usd, score, why, rec=None, place=None):
              f'👤 <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>'
              + (f": {e(record_text(rec))}" if rec else ""),
              score_lines(score, why),
+             *([x_line] if x_line else []),
              how_to(place, side, price, t.get("eventSlug") or m.get("slug"), title),
              CAUTION]
     return "\n".join(lines)
@@ -878,7 +963,7 @@ def price_move_side(m, move):
     return other_outcome(m["outcomes"], first), 1 - m["price"]
 
 
-def format_price_alert(m, move, cfg, score, why, place=None):
+def format_price_alert(m, move, cfg, score, why, place=None, x_line=None):
     e = html.escape
     arrow = "📈" if move > 0 else "📉"
     first = m["outcomes"][0] if m["outcomes"] else "Yes"
@@ -890,6 +975,7 @@ def format_price_alert(m, move, cfg, score, why, place=None):
         f"“{e(str(first))}” {verb} from {before * 100:.0f}¢ to {m['price'] * 100:.0f}¢ "
         f"in the last {cfg.price_move_window_min} min",
         score_lines(score, why),
+        *([x_line] if x_line else []),
         how_to(place, side, price, m["slug"], m["question"]),
         CAUTION])
 
@@ -1113,8 +1199,14 @@ def main():
     ap.add_argument("--once", action="store_true", help="run one check and exit")
     ap.add_argument("--find-chat-id", action="store_true", help="show chat ids that messaged the bot")
     ap.add_argument("--minutes", type=float, default=0, help="keep checking for this long, then exit")
+    ap.add_argument("--test-grok", metavar="TITLE", help="ask Grok about one market title and print the answer")
     args = ap.parse_args()
     cfg = Config()
+    if args.test_grok:
+        if not cfg.xai_key:
+            sys.exit("XAI_API_KEY is not set")
+        print(grok_buzz(cfg, args.test_grok, "Yes"))
+        return None
     if args.find_chat_id:
         return find_chat_id(cfg)
     if args.once:

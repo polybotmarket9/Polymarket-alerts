@@ -356,6 +356,31 @@ class Tests(unittest.TestCase):
         self.assertNotIn("BTC rallies", a)
         self.assertIn("Score: 🟠 38/100", a)
 
+    def test_grok_x_check(self):
+        quiet = lambda title, side: {"buzz": "none", "newest_minutes_ago": None, "summary": "No posts about it."}
+        loud = lambda title, side: {"buzz": "lots", "newest_minutes_ago": 20, "summary": "Everyone's posting the news."}
+        state = {}
+        self.assertEqual(ab.x_check(self.cfg, state, NOW, "t", "Yes", 50, [], quiet), (50, [], None))  # under 60
+        score, why, line = ab.x_check(self.cfg, state, NOW, "t", "Yes", 65, [], quiet)
+        self.assertEqual((score, why[0][0]), (75, 10))
+        self.assertIn("Grok on X:</b> No posts about it.", line)
+        score, why, line = ab.x_check(self.cfg, state, NOW, "t", "Yes", 65, [], loud)
+        self.assertEqual(score, 55)
+        self.cfg.grok_max_per_hour = 2  # 2 calls already made this hour
+        self.assertEqual(ab.x_check(self.cfg, state, NOW, "t", "Yes", 65, [], quiet)[0], 65)
+
+    def test_grok_reply_parsing(self):
+        self.cfg.xai_key = "k"
+        sent = []
+        def post(url, payload, key):
+            sent.append(payload)
+            return {"output": [{"type": "message", "content": [{"type": "output_text", "text":
+                    'Here: {"buzz": "some", "newest_minutes_ago": 300, "summary": "A few fans posting."}'}]}]}
+        found = ab.grok_buzz(self.cfg, "Mertens vs Fernandez", "Fernandez", NOW, post)
+        self.assertEqual(found["buzz"], "some")
+        self.assertEqual(sent[0]["tools"][0]["type"], "x_search")
+        self.assertIsNone(ab.grok_buzz(self.cfg, "x", "y", NOW, lambda u, p, k: {"output": []}))
+
     def test_big_bets_only(self):
         self.cfg.big_bets_only = True
         small = ab.check_trades(self.cfg, [trade(3000, tx="s")], self.markets, {}, NOW,

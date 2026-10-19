@@ -40,6 +40,7 @@ jobs:
       - name: Check Polymarket
         env:
           TELEGRAM_BOT_TOKEN: ${{ inputs.dry_run != 'true' && secrets.TELEGRAM_BOT_TOKEN || '' }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           STATE_FILE: state.json
           SCORECARD_FILE: scorecard.json
