@@ -30,9 +30,22 @@ def trade(usd, wallet="0xw1", side="BUY", ts=NOW - 30, tx="0xt"):
             "eventSlug": "btc-150k", "transactionHash": tx}
 
 
+US_EVENTS = [
+    {"slug": "nfl-dal-phi-2026-10-26", "title": "DAL Cowboys vs. PHI Eagles", "markets": [
+        {"slug": "aec-nfl-dal-phi-2026-10-26", "title": "DAL Cowboys vs PHI Eagles",
+         "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE", "outcomes": '["Cowboys","Eagles"]'}]},
+    {"slug": "btc-150k", "title": "When will Bitcoin hit $150k?", "markets": [
+        {"slug": "btc-150k-jun", "title": "Before July 2026", "outcomes": '["Yes","No"]'},
+        {"slug": "btc-150k-dec", "title": "Before January 2027", "outcomes": '["Yes","No"]'}]},
+    {"slug": "btc-200k", "title": "When will Bitcoin hit $200k?", "markets": [
+        {"slug": "btc-200k-dec", "title": "Before February 2027", "outcomes": '["Yes","No"]'}]},
+]
+
+
 class Tests(unittest.TestCase):
     def setUp(self):
         self.cfg = ab.Config()
+        self.cfg.us_only = False
         self.markets = ab.fetch_markets(self.cfg, get=fake_get)
 
     def test_markets_skip_up_or_down(self):
@@ -86,17 +99,21 @@ class Tests(unittest.TestCase):
 
     def test_signal_side(self):
         a = ab.check_trades(self.cfg, [trade(15000)], self.markets, {}, NOW, wallet_count=lambda w: 1, record=NOBODY)[0]
-        self.assertIn("Signal: bet Yes</b> · strength 🟢 strong", a)
+        self.assertIn("Signal strength: 🟢 strong", a)
+        self.assertIn("tap <b>Yes</b>", a)
+        self.assertNotIn("bet Yes", a)
         sell = trade(12000, side="SELL", tx="s")
         a = ab.check_trades(self.cfg, [sell], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)[0]
-        self.assertIn("Signal: bet No</b> · strength 🟡 medium", a)
+        self.assertIn("Signal strength: 🟡 medium", a)
+        self.assertIn("tap <b>No</b>", a)
 
     def test_price_drop_signals_other_side(self):
         state = {}
         ab.check_price_moves(self.cfg, self.markets, state, NOW - 1800)
         self.markets["0xA"]["price"] = 0.15
         a = ab.check_price_moves(self.cfg, self.markets, state, NOW)[0]
-        self.assertIn("Signal: bet No</b> · strength 🟠 weak", a)
+        self.assertIn("Signal strength: 🟠 weak", a)
+        self.assertIn("tap <b>No</b>", a)
 
     def test_fetch_trades_keeps_our_markets_and_stops_at_window(self):
         calls = []
@@ -131,7 +148,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(a), 1)
         self.assertIn("Proven winner", a[0])
         self.assertIn("made $85k on Polymarket (earns 17¢ per $1 bet), up $4,000 this month", a[0])
-        self.assertIn("strength 🟢 strong", a[0])
+        self.assertIn("strength: 🟢 strong", a[0])
         self.assertEqual(state["scorecard"][0]["strength"], "strong")
         self.assertEqual(state["scorecard"][0]["side"], "Yes")
 
@@ -249,7 +266,7 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ab.explain_market("Will Bitcoin hit $150k?", ["Yes", "No"]))
 
     def test_payout_line(self):
-        self.assertIn("64¢ a share, pays $1 if right ($100 → $156)", ab.signal_line("Cowboys", "🟢 strong", 0.64))
+        self.assertIn("64¢ a share, pays $1 if right ($100 → $156)", ab.how_to(None, "Cowboys", "🟢 strong", 0.64, "x", "Cowboys vs. Packers"))
 
     def test_telegram_payload(self):
         sent = []
@@ -271,6 +288,50 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.cfg.telegram_chat_id, "42")
         self.assertEqual(state["chat_id"], 42)
         self.assertIn("connected", sent[0])
+
+    # ---- Polymarket US
+
+    def us_catalog(self):
+        def get(url, params):
+            return {"events": [] if params["offset"] else US_EVENTS}
+        return ab.fetch_us_catalog(get)
+
+    def test_us_game_matches_winner_only(self):
+        cat = self.us_catalog()
+        hit = ab.match_us(cat, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles", "Eagles")
+        self.assertEqual((hit["event"], hit["button"]), ("nfl-dal-phi-2026-10-26", "Eagles"))
+        self.assertIsNone(ab.match_us(cat, "nfl-dal-phi-2026-10-26", "Spread: Eagles (-3.5)", "Eagles"))
+        self.assertIsNone(ab.match_us(cat, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles: O/U 47.5", "Over"))
+        self.assertIsNone(ab.match_us(cat, "nfl-sf-sea-2026-10-26", "49ers vs. Seahawks", "49ers"))
+
+    def test_us_non_game_by_title(self):
+        cat = self.us_catalog()
+        hit = ab.match_us(cat, "will-bitcoin-hit-150k", "Will Bitcoin reach $150,000 by December 31, 2026?", "Yes")
+        self.assertEqual((hit["event"], hit["title"], hit["button"]), ("btc-150k", "Before January 2027", "Yes"))
+        # Different price level or deadline: not the same bet.
+        self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $200,000 by December 31, 2026?", "Yes"))
+        self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $150,000 by March 31, 2026?", "Yes"))
+        self.assertIsNone(ab.match_us(cat, "x", "Will Ethereum flip Bitcoin in 2026?", "Yes"))
+
+    def test_us_only_drops_and_steps(self):
+        cat = self.us_catalog()
+        us = lambda slug, q, side: ab.match_us(cat, slug, q, side)
+        self.assertEqual(ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW,
+                                         wallet_count=lambda w: 100, record=NOBODY, us=us), [])
+        t = dict(trade(12000, tx="us"), title="Will Bitcoin reach $150,000 by December 31, 2026?")
+        state = {}
+        a = ab.check_trades(self.cfg, [t], self.markets, state, NOW, wallet_count=lambda w: 100,
+                            record=NOBODY, us=us)[0]
+        self.assertIn("https://polymarket.us/event/btc-150k", a)
+        self.assertIn("Find “Before January 2027” and tap <b>Yes</b>", a)
+        self.assertIn("1. Open the Polymarket US app", a)
+        self.assertNotIn("polymarket.com/event", a)
+        self.assertEqual(state["scorecard"][0]["us"], "btc-150k")
+
+    def test_us_game_steps_skip_market_name(self):
+        place = ab.match_us(self.us_catalog(), "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles", "Cowboys")
+        text = ab.how_to(place, "Cowboys", "🟢 strong", 0.59, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles")
+        self.assertIn("3. Tap <b>Cowboys</b>", text)
 
 
 if __name__ == "__main__":

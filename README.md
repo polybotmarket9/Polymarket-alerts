@@ -22,10 +22,19 @@ triggers an alert on its own, and every trade alert shows the trader's record.
 little to learn), for trades more than 15 minutes old, or for the same trader on the
 same event more than once every 12 hours.
 
-Every alert ends with a **Signal** line saying which side to bet if you follow it,
-and how strong it is: 🟢 strong (proven winner, or big bet *and* new wallet),
-🟡 medium (big bet or new wallet), 🟠 weak (price jump only). It's a hint from public
-trades, not a guarantee.
+Every alert says how strong the signal is: 🟢 strong (proven winner, or big bet *and*
+new wallet), 🟡 medium (big bet or new wallet), 🟠 weak (price jump only), then gives
+numbered steps to place the same bet on **Polymarket US** (polymarket.us): which link to
+open, which market to find and which button to tap. It's a hint from public trades, not a
+guarantee.
+
+**Polymarket US only** (`US_ONLY=true`, the default). Trades are watched on
+polymarket.com, where the volume is, but an alert is only sent when the same bet exists on
+polymarket.us. Games match by their shared event name; only the game winner is listed on
+Polymarket US, so spreads, totals and props are skipped. Other markets match by title,
+price level and deadline; when unsure, the alert is dropped. The US market list is
+reloaded every `US_REFRESH_MIN` (30) minutes. Set `US_ONLY=false` to get every alert with
+polymarket.com steps instead.
 
 **Split bets.** 3+ brand-new wallets each buying $1,000+ of the same side within 30
 minutes ($5,000+ in total) trigger an alert: often one person hiding a big bet.

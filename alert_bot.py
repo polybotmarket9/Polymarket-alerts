@@ -83,6 +83,9 @@ class Config:
         # Skip an alert if the price has already moved this many points past the trader's price.
         self.late_max_points = env_float("LATE_MAX_POINTS", 10)
         self.market_refresh_min = env_int("MARKET_REFRESH_MIN", 10)
+        # Only alert on bets you can actually place on Polymarket US (polymarket.us).
+        self.us_only = os.environ.get("US_ONLY", "true").lower() not in ("0", "false", "no")
+        self.us_refresh_min = env_int("US_REFRESH_MIN", 30)
         # A "proven winner" has at least this many settled bets, this win rate and profit.
         self.winner_min_usd = env_float("WINNER_MIN_USD", 2000)
         self.winner_min_profit = env_float("WINNER_MIN_PROFIT", 10000)
@@ -278,8 +281,9 @@ def is_late(cfg, m, outcome_index, paid):
     return now_price is not None and (now_price - paid) * 100 > cfg.late_max_points
 
 
-def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None):
-    """Return a list of alert messages for trades not seen before."""
+def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None, us=None):
+    """Return a list of alert messages for trades not seen before. `us(event_slug, question, side)`
+    says where to place the bet on Polymarket US; alerts it can't place are dropped."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
     record = record or trader_record
     seen = state.setdefault("seen_trades", {})
@@ -312,7 +316,7 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
                 reasons.insert(0, "🏆 Proven winner (record below)")
         if reasons:
             strong = winner or len(reasons) > 1
-            text, side, price = format_trade_alert(t, m, usd, reasons, rec, strong)
+            side, price = follow_side(t, m)
             idx = t.get("outcomeIndex")
             side_idx = idx if t.get("side") != "SELL" else (1 - idx if idx in (0, 1) else None)
             if price >= cfg.max_signal_price:
@@ -323,11 +327,15 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             key = f'{t["proxyWallet"]}|{t.get("eventSlug") or t.get("conditionId")}'
             if now - repeats.get(key, 0) < cfg.repeat_hours * 3600:
                 continue
+            title, slug = t.get("title") or m.get("question", ""), t.get("eventSlug") or m.get("slug", "")
+            place = us(slug, title, side) if us else None
+            if us and not place:
+                print(f"skipped, not on Polymarket US: {title} ({side})", flush=True)
+                continue
             repeats[key] = now
-            alerts.append(text)
-            log_alert(state, now, t.get("conditionId"), t.get("title") or m.get("question", ""),
-                      t.get("eventSlug") or m.get("slug", ""), side, price,
-                      "strong" if strong else "medium", m.get("cat"))
+            alerts.append(format_trade_alert(t, m, usd, reasons, rec, strong, place))
+            log_alert(state, now, t.get("conditionId"), title, slug, side, price,
+                      "strong" if strong else "medium", m.get("cat"), place)
     # Forget old entries so the state file stays small.
     for d in (seen, repeats):
         for k in [k for k, v in d.items() if now - v > 86400]:
@@ -335,7 +343,7 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
     return alerts
 
 
-def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
+def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=None):
     """Alert when several brand-new wallets back the same side of a market in a short time."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
     window = cfg.cluster_window_min * 60
@@ -379,8 +387,12 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
             continue
         cooldown[key] = now
         side, title = rows[-1][4], rows[-1][5] or m.get("question", "")
-        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg))
-        log_alert(state, now, cid, title, m.get("slug", ""), side, paid, "strong", m.get("cat"))
+        place = us(m.get("slug", ""), title, side) if us else None
+        if us and not place:
+            print(f"skipped, not on Polymarket US: {title} ({side})", flush=True)
+            continue
+        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg, place))
+        log_alert(state, now, cid, title, m.get("slug", ""), side, paid, "strong", m.get("cat"), place)
     for k in [k for k, v in seen.items() if now - v > 86400]:
         del seen[k]
     for k in [k for k, v in cooldown.items() if now - v > 86400]:
@@ -388,7 +400,7 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None):
     return alerts
 
 
-def check_price_moves(cfg, markets, state, now):
+def check_price_moves(cfg, markets, state, now, us=None):
     """Alert when a low-volume market's price moves PRICE_MOVE_POINTS within the window."""
     history = state.setdefault("prices", {})
     cooldown = state.setdefault("price_alerted", {})
@@ -411,15 +423,157 @@ def check_price_moves(cfg, markets, state, now):
         if now - cooldown.get(cid, 0) < window:
             continue
         cooldown[cid] = now
-        text, side, price = format_price_alert(m, move, cfg)
-        alerts.append(text)
-        log_alert(state, now, cid, m["question"], m["slug"], side, price, "weak", m.get("cat"))
+        side, price = price_move_side(m, move)
+        place = us(m["slug"], m["question"], side) if us else None
+        if us and not place:
+            continue
+        alerts.append(format_price_alert(m, move, cfg, place))
+        log_alert(state, now, cid, m["question"], m["slug"], side, price, "weak", m.get("cat"), place)
     for cid in [c for c in history if c not in markets]:
         del history[cid]
     for cid in [c for c, v in cooldown.items() if now - v > 86400]:
         del cooldown[cid]
     return alerts
 
+
+# ---------------------------------------------------------------- Polymarket US
+
+US_GATEWAY = "https://gateway.polymarket.us"
+US_SITE = "https://polymarket.us"
+# Game sub-markets that Polymarket US mostly doesn't list (it only has the winner).
+PROP_WORDS = re.compile(r"spread|o/u|over/under|total|\bhalf\b|\b1h\b|\b2h\b|quarter|\bmap \d|\bgame \d|"
+                        r"\bset \d|\bround \d|first to|both teams|exact score|player|points|rebounds|assists",
+                        re.I)
+STOP_WORDS = {"will", "the", "a", "an", "of", "in", "on", "by", "be", "to", "for", "and", "or", "at", "is",
+              "vs", "who", "what", "when", "which", "before", "after", "end", "than", "more", "less",
+              "above", "below", "win", "winner", "election", "market"}
+SYNONYMS = {"reach": "hit", "hits": "hit", "reaches": "hit", "btc": "bitcoin", "eth": "ethereum",
+            "sol": "solana", "democrat": "democratic", "democrats": "democratic",
+            "republicans": "republican", "gop": "republican", "us": "usa"}
+MONTHS = {m: i + 1 for i, m in enumerate(
+    ["january", "february", "march", "april", "may", "june", "july", "august", "september",
+     "october", "november", "december"])}
+_us = {"at": 0, "catalog": None}
+
+
+def words(text):
+    """Comparable words of a title: lower case, $150k -> 150000, synonyms merged."""
+    t = (text or "").lower().replace(",", "")
+    t = re.sub(r"(\d+(?:\.\d+)?)\s*([km])\b",
+               lambda g: f"{float(g.group(1)) * (1000 if g.group(2) == 'k' else 1e6):.0f}", t)
+    out = []
+    for w in re.findall(r"[a-z]+|\d+(?:\.\d+)?", t):
+        w = SYNONYMS.get(w, w)
+        if w not in STOP_WORDS and w not in MONTHS:
+            out.append(w)
+    return set(out)
+
+
+def key_numbers(ws):
+    """Numbers that change what a market means (price levels, seat counts), not years or days."""
+    return {w for w in ws if w[0].isdigit() and float(w) >= 100 and not 2000 <= float(w) <= 2100}
+
+
+def deadline(text):
+    """(year, month) a market ends by, if it says so; "before January 2027" -> (2026, 12)."""
+    t = (text or "").lower()
+    g = re.search(r"(before|by|in|end of|on)?\s*(" + "|".join(MONTHS) + r")\b[^0-9]{0,3}(\d{1,2})?,?\s*(20\d\d)", t)
+    if not g:
+        return None
+    y, mo = int(g.group(4)), MONTHS[g.group(2)]
+    if g.group(1) == "before":
+        y, mo = (y - 1, 12) if mo == 1 else (y, mo - 1)
+    return y, mo
+
+
+def fetch_us_catalog(get=http_get):
+    """Every open Polymarket US market: {"by_slug": {event slug: [market]}, "all": [market]}."""
+    by_slug, everything, offset = {}, [], 0
+    while offset < 50000:
+        data = get(f"{US_GATEWAY}/v1/events", {"limit": 200, "offset": offset, "active": "true", "closed": "false"})
+        events = data.get("events", []) if isinstance(data, dict) else data
+        for ev in events:
+            for m in ev.get("markets", []):
+                if m.get("closed") or m.get("active") is False:
+                    continue
+                title = m.get("title") or m.get("question") or ev.get("title", "")
+                entry = {"event": ev.get("slug", ""), "event_title": ev.get("title", ""), "title": title,
+                         "outcomes": [str(o) for o in as_list(m.get("outcomes"))],
+                         "type": m.get("sportsMarketTypeV2") or m.get("sportsMarketType") or "",
+                         "words": words(f'{ev.get("title", "")} {title}'),
+                         "deadline": deadline(title) or deadline(ev.get("title", ""))}
+                by_slug.setdefault(entry["event"], []).append(entry)
+                everything.append(entry)
+        if len(events) < 200:
+            break
+        offset += 200
+    return {"by_slug": by_slug, "all": everything}
+
+
+def us_catalog(cfg, get=http_get):
+    """The Polymarket US market list, refreshed every US_REFRESH_MIN; keeps the old one on errors."""
+    if time.time() - _us["at"] >= cfg.us_refresh_min * 60:
+        try:
+            _us["catalog"], _us["at"] = fetch_us_catalog(get), time.time()
+            print(f"Polymarket US: {len(_us['catalog']['all'])} open markets", flush=True)
+        except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
+            print(f"couldn't load Polymarket US markets: {err}", file=sys.stderr, flush=True)
+    return _us["catalog"]
+
+
+def pick_side(entry, side, question):
+    """The button to tap on a US market for this side, or None if it can't be placed there."""
+    outs = {o.lower(): o for o in entry["outcomes"]}
+    s = str(side).lower()
+    if s in outs:
+        return outs[s]
+    # A US "Yes/No" market about one team or person: backing them on .com means Yes there.
+    if "yes" in outs and s not in ("yes", "no") and words(side) and words(side) <= entry["words"]:
+        return outs["yes"]
+    return None
+
+
+def match_us(catalog, event_slug, question, side):
+    """Find where to place this bet on Polymarket US. Returns {"event", "event_title", "title",
+    "button"} or None when Polymarket US doesn't offer it."""
+    if not catalog:
+        return None
+    games = catalog["by_slug"].get(event_slug or "")
+    if games is not None:
+        # Same game on both sites (sports events share slugs). Only the winner market is listed,
+        # so skip spreads, totals and other props.
+        if PROP_WORDS.search(question or ""):
+            return None
+        candidates = games
+    else:
+        candidates = catalog["all"]
+    q = words(question)
+    nums, due = key_numbers(q), deadline(question)
+    best, best_score, tie = None, 0, False
+    for e in candidates:
+        button = pick_side(e, side, question)
+        if not button or (due and e["deadline"] and due != e["deadline"]):
+            continue
+        if games is not None:
+            # Same event: the market whose title fits the question best (usually there's one).
+            score = 1 + len(q & e["words"])
+        else:
+            shared = q & e["words"]
+            if len(shared) < 2 or key_numbers(e["words"]) != nums:
+                continue
+            score = len(shared) / max(len(q), 1)
+            if score < 0.6 or len(shared) / max(len(e["words"]), 1) < 0.3:
+                continue
+        if score > best_score:
+            best, best_score, tie = dict(e, button=button), score, False
+        elif score == best_score:
+            tie = True
+    # Two equally good fits (e.g. different deadlines): don't guess.
+    return None if tie else best
+
+
+def us_link(slug):
+    return f"{US_SITE}/event/{slug}"
 
 # ---------------------------------------------------------------- messages
 
@@ -437,23 +591,40 @@ def category_suffix(m):
     return f" · {category_name(m['cat'])}" if m.get("cat") else ""
 
 
-def format_split_alert(m, title, side, n, total, paid, cfg):
+def format_split_alert(m, title, side, n, total, paid, cfg, place=None):
     e = html.escape
     return "\n".join([
         f"🧩 <b>{e(title)}</b>{category_suffix(m)}",
         f"{n} brand-new accounts bought <b>{e(str(side))}</b> within {cfg.cluster_window_min} min: "
         f"${total:,.0f} total at about {paid * 100:.0f}¢",
         "🕵️ Often one person splitting a big bet across new accounts to hide it",
-        signal_line(side, "🟢 strong", paid),
-        CAUTION,
-        f'<a href="{market_link(m.get("slug"))}">Open market</a>'])
+        how_to(place, side, "🟢 strong", paid, m.get("slug"), title),
+        CAUTION])
 
 
-def signal_line(side, strength, price):
+def how_to(place, side, strength, price, slug, title):
+    """Signal strength plus tap-by-tap steps to place the bet (on Polymarket US when `place` is set)."""
     e = html.escape
     payout = 100 / price if price > 0 else 0
-    return (f"👉 <b>Signal: bet {e(str(side))}</b> · strength {strength}\n"
-            f"💵 {price * 100:.0f}¢ a share, pays $1 if right ($100 → ${payout:,.0f})")
+    head = (f"Signal strength: {strength}\n"
+            f"💵 About {price * 100:.0f}¢ a share, pays $1 if right ($100 → ${payout:,.0f})")
+    if place:
+        app, link, name = "the Polymarket US app (or polymarket.us)", us_link(place["event"]), place["event_title"]
+        button = place["button"]
+        # Single-market games: the market title just repeats the game, so skip "find ...".
+        same = words(place["title"]) <= words(place["event_title"]) or len(place["title"]) < 3
+        market = "" if same else f"Find “{e(place['title'])}” and tap "
+    else:
+        app, link, name, button = "Polymarket", market_link(slug), title, side
+        market = f"Find “{e(title)}” and tap "
+    tap = f"{market}<b>{e(str(button))}</b>" if market else f"Tap <b>{e(str(button))}</b>"
+    return "\n".join([
+        head,
+        "📲 <b>How to place it:</b>",
+        f"1. Open {app} and log in.",
+        f'2. Tap <a href="{link}">{e(name)}</a> (or tap Search and type “{e(name)}”).',
+        f"3. {tap} (around {price * 100:.0f}¢; the price there may differ a little).",
+        "4. Type how much to spend, check what it pays if you win, then confirm."])
 
 
 CAUTION = "<i>A hint, not a sure thing. Check the news first.</i>"
@@ -472,14 +643,19 @@ def explain_market(title, outcomes):
     return None
 
 
-def format_trade_alert(t, m, usd, reasons, rec=None, strong=False):
-    """Returns (message, side to bet, that side's price)."""
-    e = html.escape
-    # Follow the trader: buying an outcome backs it, selling it backs the other side.
+def follow_side(t, m):
+    """Follow the trader: buying an outcome backs it, selling it backs the other side."""
     outcome, paid = str(t.get("outcome", "")), float(t.get("price", 0))
-    side, price = outcome, paid
     if t.get("side") == "SELL":
-        side, price = other_outcome(m.get("outcomes", []), outcome), 1 - paid
+        return other_outcome(m.get("outcomes", []), outcome), 1 - paid
+    return outcome, paid
+
+
+def format_trade_alert(t, m, usd, reasons, rec=None, strong=False, place=None):
+    e = html.escape
+    outcome, paid = str(t.get("outcome", "")), float(t.get("price", 0))
+    side, price = follow_side(t, m)
+    if t.get("side") == "SELL":
         did = f"A trader just sold <b>{e(outcome)}</b>: ${usd:,.0f} at {paid * 100:.0f}¢ (betting against it)"
     else:
         did = f"A trader just bought <b>{e(outcome)}</b>: ${usd:,.0f} at {paid * 100:.0f}¢"
@@ -492,20 +668,26 @@ def format_trade_alert(t, m, usd, reasons, rec=None, strong=False):
              *([e(hint)] if hint else []),
              did,
              *[e(r) for r in reasons],
-             signal_line(side, strength, price),
              f'👤 <a href="https://polymarket.com/profile/{e(wallet)}">{e(who)}</a>'
              + (f": {e(record_text(rec))}" if rec else ""),
-             CAUTION,
-             f'<a href="{market_link(t.get("eventSlug") or m.get("slug"))}">Open market</a>']
-    return "\n".join(lines), side, price
+             how_to(place, side, strength, price, t.get("eventSlug") or m.get("slug"), title),
+             CAUTION]
+    return "\n".join(lines)
 
 
-def format_price_alert(m, move, cfg):
+def price_move_side(m, move):
+    """A jump backs the first outcome; a drop backs the other one."""
+    first = m["outcomes"][0] if m["outcomes"] else "Yes"
+    if move > 0:
+        return first, m["price"]
+    return other_outcome(m["outcomes"], first), 1 - m["price"]
+
+
+def format_price_alert(m, move, cfg, place=None):
     e = html.escape
     arrow = "📈" if move > 0 else "📉"
     first = m["outcomes"][0] if m["outcomes"] else "Yes"
-    side = first if move > 0 else other_outcome(m["outcomes"], first)
-    price = m["price"] if move > 0 else 1 - m["price"]
+    side, price = price_move_side(m, move)
     before = m["price"] - move / 100
     verb = "jumped" if move > 0 else "dropped"
     return "\n".join([
@@ -513,18 +695,19 @@ def format_price_alert(m, move, cfg):
         f"“{e(str(first))}” {verb} from {before * 100:.0f}¢ to {m['price'] * 100:.0f}¢ "
         f"in the last {cfg.price_move_window_min} min",
         f"🤫 Quiet market: only ${m['volume24hr']:,.0f} traded in the last day, so someone may know something",
-        signal_line(side, "🟠 weak", price),
-        CAUTION,
-        f'<a href="{market_link(m["slug"])}">Open market</a>']), side, price
+        how_to(place, side, "🟠 weak", price, m["slug"], m["question"]),
+        CAUTION])
 
 
 # ---------------------------------------------------------------- scorecard
 
-def log_alert(state, now, cid, title, slug, side, price, strength, cat=None):
-    state.setdefault("scorecard", []).append({
-        "t": now, "cid": cid, "title": title, "slug": slug, "side": str(side),
-        "price": round(min(max(float(price), 0.01), 0.99), 4), "strength": strength,
-        "cat": cat or "other"})
+def log_alert(state, now, cid, title, slug, side, price, strength, cat=None, place=None):
+    entry = {"t": now, "cid": cid, "title": title, "slug": slug, "side": str(side),
+             "price": round(min(max(float(price), 0.01), 0.99), 4), "strength": strength,
+             "cat": cat or "other"}
+    if place:
+        entry["us"] = place["event"]
+    state.setdefault("scorecard", []).append(entry)
 
 
 def resolve_scorecard(state, get=http_get):
@@ -700,9 +883,14 @@ def run_once(cfg, markets=None):
         markets = fetch_markets(cfg)
     min_usd = min(cfg.big_trade_usd, cfg.fresh_wallet_min_usd, cfg.winner_min_usd, cfg.cluster_min_usd)
     trades = fetch_trades(markets.keys(), min_usd, since=now - cfg.price_move_window_min * 60)
-    alerts = check_trades(cfg, trades, markets, state, now) + check_split_bets(cfg, trades, markets, state, now)
+    us = None
+    if cfg.us_only:
+        catalog = us_catalog(cfg)
+        us = lambda slug, question, side: match_us(catalog, slug, question, side)
+    alerts = check_trades(cfg, trades, markets, state, now, us=us) + \
+        check_split_bets(cfg, trades, markets, state, now, us=us)
     if fresh:
-        alerts += check_price_moves(cfg, markets, state, now)
+        alerts += check_price_moves(cfg, markets, state, now, us=us)
         try:
             resolve_scorecard(state)
         except (urllib.error.URLError, TimeoutError, ValueError) as err:
