@@ -7,34 +7,27 @@ jobs:
     steps:
       - run: |
           cat > p.py <<'PY'
-          import json, urllib.request, urllib.parse
+          import json, urllib.request
           def get(u):
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "probe"}), timeout=20) as r:
-                      return r.status, r.read().decode()
-              except Exception as e:
-                  return getattr(e, "code", "ERR"), str(e)[:200]
+              with urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "probe"}), timeout=30) as r:
+                  return json.loads(r.read().decode())
           G = "https://gateway.polymarket.us"
-          for path in ["/v1/markets?limit=2&active=true", "/v1/events?limit=1&active=true"]:
-              code, body = get(G + path)
-              print("===", path, code); print(body[:2500])
-          code, body = get(G + "/v1/markets?limit=200&active=true&closed=false")
-          try:
-              d = json.loads(body); ms = d.get("markets", d) if isinstance(d, dict) else d
-              print("count", len(ms)); print("keys", sorted(ms[0].keys()))
-              cats = {}
-              for m in ms: cats[m.get("category")] = cats.get(m.get("category"), 0) + 1
-              print("categories", cats)
-              for m in ms[:8]: print(m.get("slug"), "|", m.get("question"), "|", m.get("questionID") or m.get("questionId"), "|", m.get("category"))
-          except Exception as e:
-              print("parse fail", e, body[:300])
-          # does a .com sports market's questionID match?
-          code, body = get("https://gamma-api.polymarket.com/markets?limit=5&active=true&closed=false&tag_slug=nfl&order=volume24hr&ascending=false")
-          for m in json.loads(body)[:3]:
-              q = m.get("questionID"); print("com:", m.get("slug"), q)
-              c2, b2 = get(G + "/v1/markets?questionIds=" + urllib.parse.quote(q or ""))
-              print("  us match:", c2, b2[:300])
-          for u in ["https://polymarket.us/", "https://polymarket.us/market/" + (ms[0].get("slug") if ms else "x"), "https://polymarket.us/event/" + (ms[0].get("slug") if ms else "x")]:
-              print("page", u, get(u)[0])
+          ms, off = [], 0
+          while off < 5000:
+              d = get(f"{G}/v1/markets?limit=500&offset={off}&active=true&closed=false")["markets"]
+              ms += d; off += 500
+              if len(d) < 500: break
+          print("open markets", len(ms))
+          from collections import Counter
+          print(Counter(m.get("category") for m in ms))
+          print(Counter(m.get("sportsMarketType") for m in ms).most_common(12))
+          for m in ms:
+              if "dal" in m["slug"] and "gb" in m["slug"]:
+                  print("DALGB", m["slug"], "|", m.get("title"), "|", m.get("question"), "|", m.get("subtitle"), "|", m.get("outcomes"), m.get("outcomePrices"), "|", m.get("sportsMarketType"), "|", [ (x.get("description"), x.get("long"), x.get("price")) for x in m.get("marketSides", [])])
+          for cat in ("politics", "crypto", "economics", "culture", "business", "tech"):
+              for m in [m for m in ms if m.get("category") == cat][:4]:
+                  print(cat.upper(), m["slug"], "|", m.get("title"), "|", m.get("question"), "|", m.get("outcomes"), m.get("outcomePrices"))
+          ev = get(f"{G}/v1/events?limit=5&active=true&closed=false")["events"]
+          for e in ev: print("EVENT", e["slug"], "|", e.get("title"), "|", [mm["slug"] for mm in e.get("markets", [])][:4])
           PY
           python3 p.py
