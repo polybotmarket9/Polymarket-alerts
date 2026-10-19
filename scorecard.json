@@ -18,7 +18,8 @@
   "side": "Yes",
   "price": 0.133,
   "strength": "weak",
-  "cat": "crypto"
+  "cat": "crypto",
+  "result": "lost"
  },
  {
   "t": 1792381310,
@@ -38,7 +39,8 @@
   "side": "No",
   "price": 0.99,
   "strength": "weak",
-  "cat": "crypto"
+  "cat": "crypto",
+  "result": "won"
  },
  {
   "t": 1792381799,
@@ -48,7 +50,8 @@
   "side": "No",
   "price": 0.9795,
   "strength": "weak",
-  "cat": "crypto"
+  "cat": "crypto",
+  "result": "won"
  },
  {
   "t": 1792381799,
