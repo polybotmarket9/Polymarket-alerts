@@ -58,18 +58,27 @@ class Config:
         # Markets with almost no trading "move" on stale quotes alone; ignore those.
         self.price_move_min_volume_24h = env_float("PRICE_MOVE_MIN_VOLUME_24H", 1000)
         self.max_markets = env_int("MAX_MARKETS", 300)
+        self.market_refresh_min = env_int("MARKET_REFRESH_MIN", 10)
         self.state_file = os.environ.get(
             "STATE_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json"))
 
 
 # ---------------------------------------------------------------- HTTP helpers
 
-def http_get(url, params=None, timeout=20):
+def http_get(url, params=None, timeout=20, retries=4):
     if params:
         url = url + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"User-Agent": "polymarket-alert-bot/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode())
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as err:
+            # Back off when rate-limited (429) or the server hiccups (5xx).
+            if attempt == retries or (err.code != 429 and err.code < 500):
+                raise
+            wait = err.headers.get("Retry-After")
+            time.sleep(float(wait) if wait and wait.isdigit() else 2 ** (attempt + 1))
 
 
 def http_post(url, payload, timeout=20):
@@ -123,20 +132,33 @@ def fetch_markets(cfg, get=http_get):
     return markets
 
 
-def fetch_trades(condition_ids, min_usd, get=http_get):
-    """Recent trades of at least min_usd in the given markets, newest first."""
+def fetch_trades(condition_ids, min_usd, since, get=http_get, max_pages=5):
+    """Trades of at least min_usd since `since` in the given markets, newest first.
+
+    Reads Polymarket's site-wide feed of large trades (a few requests) and keeps the
+    ones in our markets, instead of asking about every market separately."""
+    wanted = set(condition_ids)
     trades = []
-    ids = list(condition_ids)
-    for i in range(0, len(ids), 40):
-        trades += get(f"{DATA}/trades", {"market": ",".join(ids[i:i + 40]), "limit": 500,
-                                         "takerOnly": "true", "filterType": "CASH",
-                                         "filterAmount": int(min_usd)})
+    for page in range(max_pages):
+        batch = get(f"{DATA}/trades", {"limit": 500, "offset": page * 500, "takerOnly": "true",
+                                       "filterType": "CASH", "filterAmount": int(min_usd)})
+        trades += [t for t in batch if t.get("conditionId") in wanted]
+        if len(batch) < 500 or int(batch[-1].get("timestamp", 0)) < since:
+            break
     return trades
 
 
+_wallet_counts = {}
+
+
 def wallet_trade_count(wallet, limit, get=http_get):
-    """How many trades this wallet has ever made, capped at limit."""
-    return len(get(f"{DATA}/trades", {"user": wallet, "limit": limit}))
+    """How many trades this wallet has ever made, capped at limit (cached for an hour)."""
+    hit = _wallet_counts.get(wallet)
+    if hit and time.time() - hit[1] < 3600:
+        return hit[0]
+    n = len(get(f"{DATA}/trades", {"user": wallet, "limit": limit}))
+    _wallet_counts[wallet] = (n, time.time())
+    return n
 
 
 # ---------------------------------------------------------------- rules
@@ -323,37 +345,53 @@ def save_state(path, state):
     os.replace(tmp, path)
 
 
-def run_once(cfg):
+def run_once(cfg, markets=None):
+    """One round of checks. Pass `markets` to reuse a recent market list (skips price checks)."""
     state = load_state(cfg.state_file)
     discover_chat_id(cfg, state)
     now = int(time.time())
-    markets = fetch_markets(cfg)
+    fresh = markets is None
+    if fresh:
+        markets = fetch_markets(cfg)
     min_usd = min(cfg.big_trade_usd, cfg.fresh_wallet_min_usd)
-    trades = fetch_trades(markets.keys(), min_usd)
-    alerts = check_trades(cfg, trades, markets, state, now) + check_price_moves(cfg, markets, state, now)
+    trades = fetch_trades(markets.keys(), min_usd, since=now - cfg.price_move_window_min * 60)
+    alerts = check_trades(cfg, trades, markets, state, now)
+    if fresh:
+        alerts += check_price_moves(cfg, markets, state, now)
     for a in alerts:
         send_telegram(cfg, a)
     save_state(cfg.state_file, state)
-    print(f"{time.strftime('%H:%M:%S')} checked {len(markets)} markets, {len(trades)} trades, "
-          f"{len(alerts)} alerts", flush=True)
+    newest = min((now - int(t.get("timestamp", 0)) for t in trades), default=None)
+    biggest = max((trade_usd(t) for t in trades), default=0)
+    print(f"{time.strftime('%H:%M:%S')} {len(markets)} markets, {len(trades)} recent trades of "
+          f"${min_usd:,.0f}+ (biggest ${biggest:,.0f}, newest {newest}s ago), {len(alerts)} alerts",
+          flush=True)
+    return markets
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--once", action="store_true", help="run one check and exit")
     ap.add_argument("--find-chat-id", action="store_true", help="show chat ids that messaged the bot")
+    ap.add_argument("--minutes", type=float, default=0, help="keep checking for this long, then exit")
     args = ap.parse_args()
     cfg = Config()
     if args.find_chat_id:
         return find_chat_id(cfg)
     if args.once:
         return run_once(cfg)
-    while True:
+    stop = time.time() + args.minutes * 60 if args.minutes else float("inf")
+    markets, markets_at = None, 0
+    while time.time() < stop:
         try:
-            run_once(cfg)
+            # Refresh the market list (and run price checks) every MARKET_REFRESH_MIN.
+            if time.time() - markets_at >= cfg.market_refresh_min * 60:
+                markets, markets_at = run_once(cfg), time.time()
+            else:
+                run_once(cfg, markets)
         except (urllib.error.URLError, TimeoutError, ValueError) as err:
             print(f"check failed, retrying next round: {err}", file=sys.stderr, flush=True)
-        time.sleep(cfg.poll_seconds)
+        time.sleep(max(0, min(cfg.poll_seconds, stop - time.time())))
 
 
 if __name__ == "__main__":

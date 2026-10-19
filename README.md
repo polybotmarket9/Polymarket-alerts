@@ -22,7 +22,7 @@ alerts, raise the dollar amounts; too few, lower them.
 
 ## Running on GitHub (no computer needed)
 
-This repository checks Polymarket every 5 minutes by itself (see the **Actions** tab).
+This repository checks Polymarket every 2 minutes by itself (see the **Actions** tab).
 It needs one secret:
 
 1. In Telegram, send any message to your bot.
@@ -59,7 +59,7 @@ activity for 60 days and emails you a button to turn them back on.
    It checks every 60 seconds and prints a line each round. Without Telegram
    settings it just prints alerts to the screen (handy for trying it out).
 
-`python3 alert_bot.py --once` does one check and exits, for running from cron or a
+`python3 alert_bot.py --once` does one check and exits (`--minutes 60` keeps checking for an hour), for running from cron or a
 scheduler. The bot remembers what it already alerted on in `state.json`.
 
 ## Tests

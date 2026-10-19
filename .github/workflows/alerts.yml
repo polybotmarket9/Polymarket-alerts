@@ -1,9 +1,15 @@
 name: Polymarket alerts
 
 on:
+  # Each run keeps checking every 2 minutes for ~5.5 hours. The schedule just makes
+  # sure a new run is always queued to take over (GitHub's timer alone is unreliable).
   schedule:
-    - cron: "*/5 * * * *"   # every 5 minutes (GitHub may run it a little late)
-  workflow_dispatch:         # lets you start a check by hand from the Actions tab
+    - cron: "17 * * * *"
+  workflow_dispatch:         # lets you start it by hand from the Actions tab
+    inputs:
+      minutes:
+        description: "How long to keep checking"
+        default: "330"
 
 concurrency:
   group: alerts
@@ -12,7 +18,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - name: Restore memory of past alerts
@@ -29,11 +35,12 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           STATE_FILE: state.json
+          POLL_SECONDS: 120
           BIG_TRADE_USD: ${{ vars.BIG_TRADE_USD || '10000' }}
           FRESH_WALLET_MIN_USD: ${{ vars.FRESH_WALLET_MIN_USD || '2000' }}
           PRICE_MOVE_POINTS: ${{ vars.PRICE_MOVE_POINTS || '10' }}
           PRICE_MOVE_MAX_VOLUME_24H: ${{ vars.PRICE_MOVE_MAX_VOLUME_24H || '100000' }}
-        run: python3 alert_bot.py --once
+        run: python3 alert_bot.py --minutes ${{ inputs.minutes || '330' }}
       - name: Save memory of past alerts
         if: always()
         uses: actions/cache/save@v4

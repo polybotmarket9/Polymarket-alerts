@@ -96,6 +96,32 @@ class Tests(unittest.TestCase):
         a = ab.check_price_moves(self.cfg, self.markets, state, NOW)[0]
         self.assertIn("Signal: bet No</b> · strength 🟠 weak", a)
 
+    def test_fetch_trades_keeps_our_markets_and_stops_at_window(self):
+        calls = []
+        def get(url, params):
+            calls.append(params["offset"])
+            ts = NOW - 60 if params["offset"] == 0 else NOW - 9999
+            return [dict(trade(5000, ts=ts), conditionId=("0xA" if i % 2 else "0xZ")) for i in range(500)]
+        out = ab.fetch_trades(["0xA"], 2000, since=NOW - 3600, get=get)
+        self.assertEqual(len(out), 500)  # 250 per page from 2 pages
+        self.assertEqual(calls, [0, 500])
+
+    def test_http_get_retries_on_429(self):
+        import io, urllib.error
+        attempts = []
+        def fake_open(req, timeout):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise urllib.error.HTTPError(req.full_url, 429, "slow down", {"Retry-After": "0"}, io.BytesIO())
+            return io.BytesIO(b'[1]')
+        orig = ab.urllib.request.urlopen
+        ab.urllib.request.urlopen = fake_open
+        try:
+            self.assertEqual(ab.http_get("https://x"), [1])
+        finally:
+            ab.urllib.request.urlopen = orig
+        self.assertEqual(len(attempts), 3)
+
     def test_telegram_payload(self):
         sent = []
         self.cfg.telegram_token, self.cfg.telegram_chat_id = "T", "123"
