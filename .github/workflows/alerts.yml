@@ -1,0 +1,42 @@
+name: Polymarket alerts
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes (GitHub may run it a little late)
+  workflow_dispatch:         # lets you start a check by hand from the Actions tab
+
+concurrency:
+  group: alerts
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore memory of past alerts
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: alert-state-${{ github.run_id }}
+          restore-keys: alert-state-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check Polymarket
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE_FILE: state.json
+          BIG_TRADE_USD: ${{ vars.BIG_TRADE_USD || '10000' }}
+          FRESH_WALLET_MIN_USD: ${{ vars.FRESH_WALLET_MIN_USD || '2000' }}
+          PRICE_MOVE_POINTS: ${{ vars.PRICE_MOVE_POINTS || '10' }}
+          PRICE_MOVE_MAX_VOLUME_24H: ${{ vars.PRICE_MOVE_MAX_VOLUME_24H || '100000' }}
+        run: python3 alert_bot.py --once
+      - name: Save memory of past alerts
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: alert-state-${{ github.run_id }}
