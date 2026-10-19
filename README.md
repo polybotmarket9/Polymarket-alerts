@@ -22,15 +22,20 @@ triggers an alert on its own, and every trade alert shows the trader's record.
 little to learn), for trades more than 15 minutes old, or for the same trader on the
 same event more than once every 12 hours.
 
-Every alert says how strong the signal is: 🟢 strong (proven winner, or big bet *and*
-new wallet), 🟡 medium (big bet or new wallet), 🟠 weak (price jump only), then gives
-numbered steps to place the same bet on **Polymarket US** (polymarket.us): which link to
-open, which market to find and which button to tap. It's a hint from public trades, not a
+Every alert gets a **score out of 100** with the reasons behind it (🟢 70+, 🟡 45–69,
+🟠 under 45), then numbered steps to place the same bet on **Polymarket US**
+(polymarket.us): which link to open, which market to find and which button to tap.
+Points come from: bet size next to the market's daily trading (up to +25), a brand-new
+account (+20/+25), a proven winner (+20, more for a high return or a big month), a trader
+with a big losing record (−10), a split bet (+30), news timing from Google News (+15 if
+there's no news yet, −10 if news broke in the last 2 hours; headlines aren't shown), and
+the price (+10 long shot, −5 heavy favorite). Price-jump alerts are capped at 60. The
+weekly scorecard groups results by score band. It's a hint from public trades, not a
 guarantee.
 
 **Big bets only** (`BIG_BETS_ONLY=true`, the default). Every alert needs a bet of
 $10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
-winner behind the big bet makes it 🟢 strong; a big bet alone is 🟡 medium.
+winner behind the big bet raises its score.
 
 **Polymarket US only** (`US_ONLY=true`, the default). Trades are watched on
 polymarket.com, where the volume is, but an alert is only sent when the same bet exists on

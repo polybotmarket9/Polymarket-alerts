@@ -62,7 +62,8 @@ class Tests(unittest.TestCase):
     def test_big_trade(self):
         alerts = ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual(len(alerts), 1)
-        self.assertIn("Big bet", alerts[0])
+        self.assertIn("Score: 🟡 48/100", alerts[0])
+        self.assertIn("+18 Bet is 30% of this market", alerts[0])
 
     def test_fresh_wallet(self):
         alerts = ab.check_trades(self.cfg, [trade(3000)], self.markets, {}, NOW, wallet_count=lambda w: 2, record=NOBODY)
@@ -106,12 +107,13 @@ class Tests(unittest.TestCase):
 
     def test_signal_side(self):
         a = ab.check_trades(self.cfg, [trade(15000)], self.markets, {}, NOW, wallet_count=lambda w: 1, record=NOBODY)[0]
-        self.assertIn("Signal strength: 🟢 strong", a)
+        self.assertIn("Score: 🟢 73/100", a)
+        self.assertIn("+25 Brand-new account", a)
         self.assertIn("tap <b>Yes</b>", a)
         self.assertNotIn("bet Yes", a)
         sell = trade(12000, side="SELL", tx="s")
         a = ab.check_trades(self.cfg, [sell], self.markets, {}, NOW, wallet_count=lambda w: 100, record=NOBODY)[0]
-        self.assertIn("Signal strength: 🟡 medium", a)
+        self.assertIn("Score: 🟠 43/100", a)
         self.assertIn("tap <b>No</b>", a)
 
     def test_price_drop_signals_other_side(self):
@@ -119,7 +121,8 @@ class Tests(unittest.TestCase):
         ab.check_price_moves(self.cfg, self.markets, state, NOW - 1800)
         self.markets["0xA"]["price"] = 0.15
         a = ab.check_price_moves(self.cfg, self.markets, state, NOW)[0]
-        self.assertIn("Signal strength: 🟠 weak", a)
+        self.assertIn("Score: 🟠 25/100", a)
+        self.assertIn("−5 Already the favorite at 85¢", a)
         self.assertIn("tap <b>No</b>", a)
 
     def test_fetch_trades_keeps_our_markets_and_stops_at_window(self):
@@ -155,8 +158,9 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(a), 1)
         self.assertIn("Proven winner", a[0])
         self.assertIn("made $85k on Polymarket (earns 17¢ per $1 bet), up $4,000 this month", a[0])
-        self.assertIn("strength: 🟢 strong", a[0])
-        self.assertEqual(state["scorecard"][0]["strength"], "strong")
+        self.assertIn("+20 Proven winner", a[0])
+        self.assertEqual(state["scorecard"][0]["strength"], "medium")
+        self.assertEqual(state["scorecard"][0]["score"], 65)
         self.assertEqual(state["scorecard"][0]["side"], "Yes")
 
     def test_losing_trader_with_small_bet_is_quiet(self):
@@ -196,7 +200,7 @@ class Tests(unittest.TestCase):
         self.assertEqual([a.get("result") for a in state["scorecard"]], ["won", "lost", None])
         text = ab.summary_text(state)
         self.assertIn("Settled: 1 won, 1 lost (50%)", text)
-        self.assertIn("🟢 strong 1-0 · 🟡 medium 0-1", text)
+        self.assertIn("🟢 score 70+ 1-0 · 🟡 45–69 0-1", text)
         self.assertIn("If you'd bet $100 on each: +$200", text)  # +300 on the 25c win, -100 on the loss
         self.assertIn("Waiting to settle: 1 alert", text)
 
@@ -264,7 +268,7 @@ class Tests(unittest.TestCase):
         loud = ab.check_trades(self.cfg, [trade(60000, tx="sp2")], self.markets, {}, NOW,
                                wallet_count=lambda w: 100, record=NOBODY)
         self.assertEqual((len(quiet), len(loud)), (0, 1))
-        self.assertIn("over $50,000", loud[0])
+        self.assertIn("$60,000", loud[0])
 
     def test_spread_is_explained(self):
         self.assertEqual(ab.explain_market("Spread: Packers (-14.5)", ["Packers", "Cowboys"]),
@@ -273,7 +277,7 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ab.explain_market("Will Bitcoin hit $150k?", ["Yes", "No"]))
 
     def test_payout_line(self):
-        self.assertIn("64¢ a share, pays $1 if right ($100 → $156)", ab.how_to(None, "Cowboys", "🟢 strong", 0.64, "x", "Cowboys vs. Packers"))
+        self.assertIn("64¢ a share, pays $1 if right ($100 → $156)", ab.how_to(None, "Cowboys", 0.64, "x", "Cowboys vs. Packers"))
 
     def test_telegram_payload(self):
         sent = []
@@ -320,6 +324,35 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ab.match_us(cat, "x", "Will Bitcoin reach $150,000 by March 31, 2026?", "Yes"))
         self.assertIsNone(ab.match_us(cat, "x", "Will Ethereum flip Bitcoin in 2026?", "Yes"))
 
+    def test_news(self):
+        rss = """<rss><channel>
+          <item><title>Bitcoin jumps on ETF news - Reuters</title><link>https://r.example/1</link>
+            <pubDate>Fri, 15 Jan 2027 07:00:00 GMT</pubDate><source>Reuters</source></item>
+          <item><title>Old story - AP</title><link>https://ap.example/2</link>
+            <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate><source>AP</source></item>
+        </channel></rss>"""
+        now = 1_800_000_000  # Fri, 15 Jan 2027 08:00:00 GMT
+        asked = []
+        get = lambda url, params: asked.append(params["q"]) or rss
+        news = ab.fetch_news("Will Bitcoin hit $150k by December 31?", 48, get, now)
+        self.assertEqual(asked, ["Bitcoin when:2d"])
+        self.assertEqual([(n["title"], n["source"], ab.ago(n["age"])) for n in news],
+                         [("Bitcoin jumps on ETF news", "Reuters", "1h ago")])
+        self.assertEqual(ab.news_query("Will Pete Buttigieg win the 2028 US Presidential Election?"),
+                         "Pete Buttigieg US Presidential Election")
+
+    def test_news_timing_moves_score(self):
+        a = ab.check_trades(self.cfg, [trade(12000)], self.markets, {}, NOW, wallet_count=lambda w: 100,
+                            record=NOBODY, news=lambda title: [])[0]
+        self.assertIn("+15 No news about this yet", a)
+        self.assertIn("Score: 🟡 63/100", a)
+        headline = [{"title": "BTC rallies", "source": "AP", "link": "https://x", "age": 600}]
+        a = ab.check_trades(self.cfg, [trade(12000, tx="n")], self.markets, {}, NOW, wallet_count=lambda w: 100,
+                            record=NOBODY, news=lambda title: headline)[0]
+        self.assertIn("−10 News came out 10 min ago: the trader may just be reacting", a)
+        self.assertNotIn("BTC rallies", a)
+        self.assertIn("Score: 🟠 38/100", a)
+
     def test_big_bets_only(self):
         self.cfg.big_bets_only = True
         small = ab.check_trades(self.cfg, [trade(3000, tx="s")], self.markets, {}, NOW,
@@ -327,7 +360,7 @@ class Tests(unittest.TestCase):
         big = ab.check_trades(self.cfg, [trade(12000, tx="b")], self.markets, {}, NOW,
                               wallet_count=lambda w: 1, record=WINNER)
         self.assertEqual((len(small), len(big)), (0, 1))
-        self.assertIn("strength: 🟢 strong", big[0])
+        self.assertIn("Score: 🟢", big[0])
 
     def test_us_rejects_near_misses(self):
         cat = self.us_catalog()
@@ -357,7 +390,7 @@ class Tests(unittest.TestCase):
 
     def test_us_game_steps_skip_market_name(self):
         place = ab.match_us(self.us_catalog(), "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles", "Cowboys")
-        text = ab.how_to(place, "Cowboys", "🟢 strong", 0.59, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles")
+        text = ab.how_to(place, "Cowboys", 0.59, "nfl-dal-phi-2026-10-26", "Cowboys vs. Eagles")
         self.assertIn("3. Tap <b>Cowboys</b>", text)
 
 
