@@ -217,5 +217,17 @@
   "cat": "politics",
   "us": "isrpol-pm-2026-10-27",
   "score": 50
+ },
+ {
+  "t": 1792505690,
+  "cid": "0x4e22f6d2ae4af77a41c1f57a3f077e3c32606c826b987406d6e27fac9ddad7aa",
+  "title": "Will Bitcoin dip to $77,500 in October?",
+  "slug": "what-price-will-bitcoin-hit-in-october-2026",
+  "side": "No",
+  "price": 0.745,
+  "strength": "weak",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-10",
+  "score": 30
  }
 ]
