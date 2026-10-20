@@ -822,6 +822,10 @@ def grok_buzz(cfg, title, side, now=None, post=http_post_auth, debug=False):
                               "tools": [{"type": "x_search", "from_date": day}]}, cfg.xai_key)
         text = response_text(resp)
         found = json.loads(text[text.index("{"): text.rindex("}") + 1])
+        # No search actually ran: the answer would be a guess, so don't use it.
+        if not any("tool_call" in (i.get("type") or "") for i in resp.get("output", [])):
+            print("Grok answered without searching X; ignoring it", file=sys.stderr, flush=True)
+            return None
         if debug:
             print("output items:", [i.get("type") for i in resp.get("output", [])],
                   "citations:", len(resp.get("citations") or []), flush=True)

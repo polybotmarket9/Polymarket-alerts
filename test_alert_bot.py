@@ -374,7 +374,7 @@ class Tests(unittest.TestCase):
         sent = []
         def post(url, payload, key):
             sent.append(payload)
-            return {"output": [{"type": "message", "content": [{"type": "output_text", "text":
+            return {"output": [{"type": "custom_tool_call"}, {"type": "message", "content": [{"type": "output_text", "text":
                     'Here: {"buzz": "some", "newest_minutes_ago": 300, "summary": "A few fans posting."}'}]}]}
         found = ab.grok_buzz(self.cfg, "Mertens vs Fernandez", "Fernandez", NOW, post)
         self.assertEqual(found["buzz"], "some")
