@@ -1224,10 +1224,69 @@ def send_telegram(cfg, text, post=http_post):
           "disable_web_page_preview": True})
 
 
+def bets_text(state, n=10, get=http_get, now=None):
+    """The latest alerts with how each is doing right now (or how it ended)."""
+    now = now or time.time()
+    card = state.get("scorecard", [])[-n:][::-1]
+    if not card:
+        return "📋 No alerts yet. I'll list them here as they come in."
+    live = {}
+    open_ids = sorted({a["cid"] for a in card if "result" not in a and a.get("cid")})
+    for i in range(0, len(open_ids), 20):
+        try:
+            params = [("condition_ids", c) for c in open_ids[i:i + 20]] + [("limit", 50)]
+            for m in get(f"{GAMMA}/markets", params):
+                live[m.get("conditionId")] = m
+        except (urllib.error.URLError, TimeoutError, ValueError) as err:
+            print(f"couldn't load live prices: {err}", file=sys.stderr, flush=True)
+    e = html.escape
+    pending = sum("result" not in a for a in card)
+    lines = [f"📋 <b>Your last {len(card)} alerts</b> ({pending} still open)"]
+    for a in card:
+        dot = {"strong": "🟢", "medium": "🟡", "weak": "🟠"}.get(a.get("strength"), "⚪")
+        score = f"{a['score']}/100" if "score" in a else a.get("strength", "")
+        paid = a["price"]
+        head = f"{dot} {score} · {category_name(a.get('cat', 'other'))} · {ago(now - a['t'])}"
+        bet = f"{e(a['title'])}: <b>{e(a['side'])}</b> at {paid * 100:.0f}¢"
+        result = a.get("result")
+        if result == "won":
+            status = f"✅ Won: +${100 / paid - 100:,.0f} on a $100 bet"
+        elif result == "lost":
+            status = "❌ Lost: −$100 on a $100 bet"
+        elif result == "void":
+            status = "➖ Never settled"
+        else:
+            m = live.get(a["cid"]) or {}
+            outs = [str(o) for o in as_list(m.get("outcomes"))]
+            prices = [float(x) for x in as_list(m.get("outcomePrices"))]
+            if a["side"] in outs and len(prices) == len(outs):
+                now_p = prices[outs.index(a["side"])]
+                change = 100 * now_p / paid - 100
+                status = (f"⏳ Open: now {now_p * 100:.0f}¢ "
+                          f"({'+' if change >= 0 else '−'}${abs(change):,.0f} on a $100 bet if sold now)")
+            else:
+                status = "⏳ Open"
+        lines.append(f"\n{head}\n{bet}\n{status}")
+    lines.append("\nSend /score for win rates by category.")
+    return "\n".join(lines)
+
+
+COMMANDS = [{"command": "bets", "description": "Latest alerts and how each is doing now"},
+            {"command": "score", "description": "Win rates by score and category"},
+            {"command": "help", "description": "What I can do"}]
+
+
 def handle_commands(cfg, state, get=http_get):
-    """Answer /score (and /help) sent to the bot from your own chat."""
+    """Answer /bets, /score and /help sent to the bot from your own chat."""
     if not (cfg.telegram_token and cfg.telegram_chat_id):
         return
+    if state.get("commands_set") != len(COMMANDS):
+        # Shows the commands in Telegram's "/" menu.
+        try:
+            http_post(f"https://api.telegram.org/bot{cfg.telegram_token}/setMyCommands", {"commands": COMMANDS})
+            state["commands_set"] = len(COMMANDS)
+        except (urllib.error.URLError, TimeoutError, ValueError) as err:
+            print(f"couldn't set Telegram commands: {err}", file=sys.stderr, flush=True)
     res = get(f"https://api.telegram.org/bot{cfg.telegram_token}/getUpdates",
               {"offset": state.get("tg_offset", 0) + 1, "timeout": 0})
     for u in res.get("result", []):
@@ -1236,10 +1295,15 @@ def handle_commands(cfg, state, get=http_get):
         if str(msg.get("chat", {}).get("id")) != str(cfg.telegram_chat_id):
             continue
         text = (msg.get("text") or "").strip().lower()
-        if text.startswith("/score"):
+        if text.startswith("/bets"):
+            arg = text.split()[1:2]
+            n = min(int(arg[0]), 30) if arg and arg[0].isdigit() else 10
+            send_telegram(cfg, bets_text(state, n, get))
+        elif text.startswith("/score"):
             send_telegram(cfg, summary_text(state))
         elif text.startswith(("/help", "/start")):
-            send_telegram(cfg, "Send /score to see how past alerts turned out. "
+            send_telegram(cfg, "/bets shows your latest alerts and how each one is doing right now "
+                               "(/bets 20 for more).\n/score shows win rates by score and category.\n"
                                "I also send the scorecard automatically once a week.")
 
 
@@ -1384,7 +1448,16 @@ def main():
                 run_once(cfg, markets)
         except Exception as err:  # never let one bad round stop the bot
             print(f"check failed, retrying next round: {err!r}", file=sys.stderr, flush=True)
-        time.sleep(max(0, min(cfg.poll_seconds, stop - time.time())))
+        # Wait for the next round, answering Telegram commands every 10 seconds meanwhile.
+        wake = min(time.time() + cfg.poll_seconds, stop)
+        while time.time() < wake:
+            time.sleep(max(0, min(10, wake - time.time())))
+            try:
+                state = load_state(cfg)
+                handle_commands(cfg, state)
+                save_state(cfg, state)
+            except Exception as err:
+                print(f"couldn't read Telegram commands: {err!r}", file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ minutes ($5,000+ in total) trigger an alert: often one person hiding a big bet.
 trader paid. Price-jump alerts are off for sports, where live odds swing all game.
 
 **Scorecard.** Every alert is logged in `scorecard.json` and marked won or lost when
-its market settles. Send your bot **/score** in Telegram any time to see the results
+its market settles. Send your bot **/bets (latest alerts and how each is doing now), /score** in Telegram any time to see the results
 (and what $100 on each signal would have made), broken down by category so you can
 see which is most accurate. It also sends this once a week.
 

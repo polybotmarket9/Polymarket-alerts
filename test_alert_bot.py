@@ -410,6 +410,25 @@ class Tests(unittest.TestCase):
         self.assertEqual(ab.check_trader_posts(self.cfg, state, NOW + 60, catalog, ask), [])
         self.assertEqual(ab.check_trader_posts(self.cfg, state, NOW + 3600, catalog, ask), [])
 
+    def test_bets_command(self):
+        state = {"scorecard": [
+            {"t": NOW - 7200, "cid": "0xA", "title": "Cowboys vs. Eagles", "slug": "x", "side": "Eagles",
+             "price": 0.5, "strength": "strong", "score": 82, "cat": "sports"},
+            {"t": NOW - 3600, "cid": "0xB", "title": "Will BTC hit $150k?", "slug": "y", "side": "Yes",
+             "price": 0.25, "strength": "medium", "cat": "crypto", "result": "won"},
+            {"t": NOW - 60, "cid": "0xC", "title": "Lost one", "slug": "z", "side": "No",
+             "price": 0.6, "strength": "weak", "score": 30, "cat": "politics", "result": "lost"}]}
+        get = lambda url, params: [{"conditionId": "0xA", "outcomes": '["Cowboys","Eagles"]',
+                                    "outcomePrices": '["0.4","0.6"]'}]
+        text = ab.bets_text(state, 10, get, NOW)
+        self.assertIn("Your last 3 alerts</b> (1 still open)", text)
+        self.assertLess(text.index("Lost one"), text.index("Cowboys"))  # newest first
+        self.assertIn("🟢 82/100 · Sports · 2h ago", text)
+        self.assertIn("⏳ Open: now 60¢ (+$20 on a $100 bet if sold now)", text)
+        self.assertIn("✅ Won: +$300 on a $100 bet", text)
+        self.assertIn("❌ Lost", text)
+        self.assertIn("No alerts yet", ab.bets_text({}, 10, get, NOW))
+
     def test_big_bets_only(self):
         self.cfg.big_bets_only = True
         small = ab.check_trades(self.cfg, [trade(3000, tx="s")], self.markets, {}, NOW,
