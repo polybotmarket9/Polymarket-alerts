@@ -18,4 +18,8 @@ jobs:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           TITLE: ${{ inputs.title }}
         run: |
-          if [ "$TITLE" = "watch" ]; then python3 alert_bot.py --test-watch; else python3 alert_bot.py --test-grok "$TITLE"; fi
+          case "$TITLE" in
+            watch) python3 alert_bot.py --test-watch ;;
+            watch:*) WATCH_TOP=0 EXTRA_X_HANDLES="${TITLE#watch:}" python3 alert_bot.py --test-watch ;;
+            *) python3 alert_bot.py --test-grok "$TITLE" ;;
+          esac

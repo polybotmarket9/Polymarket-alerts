@@ -801,7 +801,7 @@ Reply with only JSON, no other text:
   "summary": "<one short plain sentence a beginner understands, max 25 words>"}}"""
 
 
-def http_post_auth(url, payload, key, timeout=90):
+def http_post_auth(url, payload, key, timeout=180):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
