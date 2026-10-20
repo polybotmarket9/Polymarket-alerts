@@ -1,0 +1,9 @@
+name: Bets check (temporary)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -c "import json, alert_bot as ab; print(ab.bets_text({'scorecard': json.load(open('scorecard.json'))}, 10))"
