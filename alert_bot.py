@@ -784,9 +784,11 @@ def price_score(cfg, m, move, price, headlines):
 # ---------------------------------------------------------------- Grok X check
 
 XAI_URL = "https://api.x.ai/v1/responses"
-GROK_PROMPT = """Search X (Twitter) for posts from the last 24 hours about this prediction market:
-"{title}" (someone just bet on "{side}").
-Is anyone on X talking about it, and is there any breaking news, rumor or leak that would explain the bet?
+GROK_PROMPT = """Use X search to look at posts from the last 24 hours about the topic of this question:
+"{title}" (someone just bet "{side}").
+Search for the people, teams or things it is about, not for the betting market itself (posts rarely
+mention the market). Is anyone on X talking about this topic right now, and is there any breaking news,
+rumor or leak that would explain a bet on "{side}"?
 Reply with only JSON, no other text:
 {{"buzz": "none" | "some" | "lots", "newest_minutes_ago": <minutes since the newest relevant post, or null>,
   "summary": "<one short plain sentence a beginner understands, max 25 words>"}}"""
@@ -811,7 +813,7 @@ def response_text(resp):
     return "\n".join(parts)
 
 
-def grok_buzz(cfg, title, side, now=None, post=http_post_auth):
+def grok_buzz(cfg, title, side, now=None, post=http_post_auth, debug=False):
     """Ask Grok what X is saying about a market: {"buzz", "newest_minutes_ago", "summary"} or None."""
     day = time.strftime("%Y-%m-%d", time.gmtime((now or time.time()) - 86400))
     try:
@@ -820,6 +822,9 @@ def grok_buzz(cfg, title, side, now=None, post=http_post_auth):
                               "tools": [{"type": "x_search", "from_date": day}]}, cfg.xai_key)
         text = response_text(resp)
         found = json.loads(text[text.index("{"): text.rindex("}") + 1])
+        if debug:
+            print("output items:", [i.get("type") for i in resp.get("output", [])],
+                  "citations:", len(resp.get("citations") or []), flush=True)
     except urllib.error.HTTPError as err:
         print(f"Grok X check failed: {err}: {err.read().decode(errors='replace')[:300]}", file=sys.stderr, flush=True)
         return None
@@ -1218,7 +1223,7 @@ def main():
                 print("models:", [m.get("id") for m in json.loads(r.read().decode()).get("data", [])])
         except urllib.error.HTTPError as err:
             print("models:", err, err.read().decode(errors="replace")[:300])
-        print(grok_buzz(cfg, args.test_grok, "Yes"))
+        print(grok_buzz(cfg, args.test_grok, "Yes", debug=True))
         return None
     if args.find_chat_id:
         return find_chat_id(cfg)
