@@ -1261,7 +1261,7 @@ def bets_text(state, n=10, get=http_get, now=None):
             prices = [float(x) for x in as_list(m.get("outcomePrices"))]
             if a["side"] in outs and len(prices) == len(outs):
                 now_p = prices[outs.index(a["side"])]
-                change = 100 * now_p / paid - 100
+                change = round(100 * now_p / paid - 100)
                 status = (f"⏳ Open: now {now_p * 100:.0f}¢ "
                           f"({'+' if change >= 0 else '−'}${abs(change):,.0f} on a $100 bet if sold now)")
             else:
