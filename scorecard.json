@@ -265,5 +265,18 @@
   "cat": "politics",
   "us": "hormuz-normal",
   "score": 20
+ },
+ {
+  "t": 1792533138,
+  "cid": "0x856d7a8f3701df6fce91acfd18d4ffc3e4500c747333dfc02772cea75c83d1c5",
+  "title": "Avalanche vs. Devils",
+  "slug": "nhl-col-nj-2026-10-20",
+  "side": "Avalanche",
+  "price": 0.48,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nhl-col-nj-2026-10-20",
+  "score": 30,
+  "hidden": true
  }
 ]
