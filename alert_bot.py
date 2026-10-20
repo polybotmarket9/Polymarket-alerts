@@ -112,6 +112,13 @@ class Config:
         self.grok_model = os.environ.get("GROK_MODEL", "grok-4.7")
         self.grok_min_score = env_int("GROK_MIN_SCORE", 60)
         self.grok_max_per_hour = env_int("GROK_MAX_PER_HOUR", 10)
+        # Watch profitable traders' X accounts (linked on their Polymarket profile) for posted picks.
+        self.watch_traders = os.environ.get("WATCH_TRADERS", "true").lower() not in ("0", "false", "no")
+        self.watch_every_min = env_int("WATCH_EVERY_MIN", 45)
+        self.watch_top = env_int("WATCH_TOP", 500)  # leaderboard places to scan, per period
+        self.watch_min_profit = env_float("WATCH_MIN_PROFIT", 50000)
+        self.watch_extra = [h.strip().lstrip("@") for h in os.environ.get("EXTRA_X_HANDLES", "").split(",")
+                            if h.strip()]
         self.scorecard_file = os.environ.get(
             "SCORECARD_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard.json"))
         self.state_file = os.environ.get(
@@ -596,7 +603,7 @@ def pick_side(entry, side):
     return None
 
 
-def match_us(catalog, event_slug, question, side):
+def match_us(catalog, event_slug, question, side, loose=False):
     """Find where to place this bet on Polymarket US. Returns {"event", "event_title", "title",
     "button"} or None when Polymarket US doesn't clearly offer the same bet."""
     if not catalog or PROP_WORDS.search(question or ""):
@@ -612,7 +619,7 @@ def match_us(catalog, event_slug, question, side):
         # on the US market, the US market's own words must all be in the question, and the dates
         # must agree. Anything looser picked the wrong person, team or deadline in testing.
         hits = [e for e in catalog["all"]
-                if q <= e["words"] and e["title_words"] <= q and len(q) >= 2
+                if q <= e["words"] and (loose or e["title_words"] <= q) and len(q) >= 2
                 and same_date(due, e["deadline"]) and timed == e["timed"] and pick_side(e, side)]
     if len(hits) != 1:
         return None  # nothing, or several equally good fits: don't guess
@@ -764,9 +771,9 @@ def trade_score(cfg, t, m, usd, price, rec, winner, prior, headlines):
             if vol and profit / vol >= 0.15:
                 factors.append((5, f"Earns {profit / vol * 100:.0f}¢ per $1 bet"))
             if rec["month"]["profit"] >= 10000:
-                factors.append((5, f"Up ${short_money(rec['month']['profit'])} this month"))
+                factors.append((5, f"Up {short_money(rec['month']['profit']).lstrip('+')} this month"))
         elif profit <= -10000:
-            factors.append((-10, f"This trader has lost ${short_money(-profit)} overall"))
+            factors.append((-10, f"This trader has lost {short_money(-profit).lstrip('+')} overall"))
     return total_score(25, factors)
 
 
@@ -813,29 +820,32 @@ def response_text(resp):
     return "\n".join(parts)
 
 
-def grok_buzz(cfg, title, side, now=None, post=http_post_auth, debug=False):
-    """Ask Grok what X is saying about a market: {"buzz", "newest_minutes_ago", "summary"} or None."""
-    day = time.strftime("%Y-%m-%d", time.gmtime((now or time.time()) - 86400))
+def grok_json(cfg, prompt, tool, post=http_post_auth, debug=False):
+    """Ask Grok with an X search tool and parse the JSON it replies with, or None."""
     try:
-        resp = post(XAI_URL, {"model": cfg.grok_model,
-                              "input": GROK_PROMPT.format(title=title, side=side),
-                              "tools": [{"type": "x_search", "from_date": day}]}, cfg.xai_key)
-        text = response_text(resp)
-        found = json.loads(text[text.index("{"): text.rindex("}") + 1])
+        resp = post(XAI_URL, {"model": cfg.grok_model, "input": prompt, "tools": [tool]}, cfg.xai_key)
+        if debug:
+            print("output items:", [i.get("type") for i in resp.get("output", [])],
+                  "citations:", len(resp.get("citations") or []), flush=True)
         # No search actually ran: the answer would be a guess, so don't use it.
         if not any("tool_call" in (i.get("type") or "") for i in resp.get("output", [])):
             print("Grok answered without searching X; ignoring it", file=sys.stderr, flush=True)
             return None
-        if debug:
-            print("output items:", [i.get("type") for i in resp.get("output", [])],
-                  "citations:", len(resp.get("citations") or []), flush=True)
+        text = response_text(resp)
+        return json.loads(text[text.index("{"): text.rindex("}") + 1])
     except urllib.error.HTTPError as err:
-        print(f"Grok X check failed: {err}: {err.read().decode(errors='replace')[:300]}", file=sys.stderr, flush=True)
-        return None
+        print(f"Grok request failed: {err}: {err.read().decode(errors='replace')[:300]}", file=sys.stderr, flush=True)
     except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
-        print(f"Grok X check failed: {err}", file=sys.stderr, flush=True)
-        return None
-    if found.get("buzz") not in ("none", "some", "lots"):
+        print(f"Grok request failed: {err}", file=sys.stderr, flush=True)
+    return None
+
+
+def grok_buzz(cfg, title, side, now=None, post=http_post_auth, debug=False):
+    """Ask Grok what X is saying about a market: {"buzz", "newest_minutes_ago", "summary"} or None."""
+    day = time.strftime("%Y-%m-%d", time.gmtime((now or time.time()) - 86400))
+    found = grok_json(cfg, GROK_PROMPT.format(title=title, side=side), {"type": "x_search", "from_date": day},
+                      post, debug)
+    if not isinstance(found, dict) or found.get("buzz") not in ("none", "some", "lots"):
         return None
     return found
 
@@ -866,6 +876,116 @@ def x_check(cfg, state, now, title, side, score, why, buzz=None):
         score = max(0, min(100, score + factor[0]))
     line = f"𝕏 <b>Grok on X:</b> {html.escape(str(found.get('summary', '')))}" if found.get("summary") else None
     return score, why, line
+
+# ---------------------------------------------------------------- top traders on X
+
+WATCH_PROMPT = """Use X search to read posts from these accounts: {handles}.
+Find posts made in the last {minutes} minutes (after {since} UTC) where the account shares a pick, a bet
+they placed, or a confident call on an upcoming outcome (a game, election, price level, event...).
+Ignore jokes, ads, replies with no pick, and posts older than that.
+Reply with only JSON, no other text:
+{{"posts": [{{"handle": "<account, no @>", "minutes_ago": <minutes since posted>,
+  "pick": "<what they are backing, one short plain sentence>",
+  "question": "<the yes/no question or matchup it is about, e.g. 'Will Bitcoin hit $150k by December 31, 2026?' or 'Cowboys vs. Eagles'>",
+  "side": "<the side they back: Yes, No, or a team/person name>",
+  "url": "<link to the post if known, else empty>"}}]}}
+Use {{"posts": []}} if there are none."""
+
+
+def build_watchlist(cfg, get=http_get):
+    """Profitable traders who linked an X account: {handle: {"name", "wallet", "month", "all"}}."""
+    found = {}
+    for period in ("month", "all"):
+        seen = set()
+        for offset in range(0, cfg.watch_top, 50):
+            try:
+                rows = get(f"{DATA}/v1/leaderboard", {"timePeriod": period, "orderBy": "PNL",
+                                                      "limit": 50, "offset": offset})
+            except (urllib.error.URLError, TimeoutError, ValueError) as err:
+                print(f"couldn't read leaderboard: {err}", file=sys.stderr, flush=True)
+                break
+            new = [r for r in rows or [] if r.get("proxyWallet") not in seen]
+            if not new:
+                break
+            for r in new:
+                seen.add(r.get("proxyWallet"))
+                handle = (r.get("xUsername") or "").strip().lstrip("@")
+                pnl = float(r.get("pnl") or 0)
+                if not handle or pnl < cfg.watch_min_profit:
+                    continue
+                entry = found.setdefault(handle, {"name": r.get("userName") or handle,
+                                                  "wallet": r.get("proxyWallet"), "month": None, "all": None})
+                entry[period] = pnl
+    for handle in cfg.watch_extra:
+        found.setdefault(handle, {"name": handle, "wallet": None, "month": None, "all": None})
+    return found
+
+
+def trader_line(info):
+    parts = []
+    if info.get("month"):
+        parts.append(f"up {short_money(info['month']).lstrip('+')} this month")
+    if info.get("all"):
+        parts.append(f"{short_money(info['all']).lstrip('+')} profit all-time")
+    return " · ".join(parts) or "on your watchlist"
+
+
+def format_post_alert(post, info, place):
+    e = html.escape
+    lines = [f"🗣 <b>@{e(post['handle'])}</b> just posted a pick on X",
+             f"👤 Polymarket trader {e(info.get('name', post['handle']))}: {e(trader_line(info))}",
+             f"💬 {e(post.get('pick', ''))}"]
+    if post.get("url", "").startswith("https://"):
+        lines.append(f'<a href="{e(post["url"])}">See the post</a>')
+    if place:
+        lines.append(how_to(place, post.get("side", ""), None, "", post.get("question", "")))
+    else:
+        lines.append(f"🔎 Couldn't match this to a Polymarket US market. To look yourself, search "
+                     f"“{e(post.get('question', ''))}” in the Polymarket US app.")
+    lines.append("<i>Traders sometimes post after they've already bought. Treat it as a clue, not a sure thing.</i>")
+    return "\n".join(lines)
+
+
+def check_trader_posts(cfg, state, now, catalog=None, ask=None):
+    """Every WATCH_EVERY_MIN, ask Grok whether watched traders posted picks. Returns alert texts."""
+    if not (cfg.xai_key or ask) or not cfg.watch_traders:
+        return []
+    if now - state.get("watch_checked", 0) < cfg.watch_every_min * 60:
+        return []
+    if now - state.get("watchlist_at", 0) > 86400 or "watchlist" not in state:
+        state["watchlist"], state["watchlist_at"] = build_watchlist(cfg), now
+        print(f"watching {len(state['watchlist'])} traders on X", flush=True)
+    minutes = int(min(now - state.get("watch_checked", now - cfg.watch_every_min * 60), 6 * 3600) // 60) + 5
+    state["watch_checked"] = now
+    since = time.strftime("%Y-%m-%d %H:%M", time.gmtime(now - minutes * 60))
+    day = time.strftime("%Y-%m-%d", time.gmtime(now - 86400))
+    ask = ask or (lambda prompt, handles: grok_json(cfg, prompt, {"type": "x_search", "from_date": day,
+                                                                  "allowed_x_handles": handles}))
+    watch = state["watchlist"]
+    handles = sorted(watch)
+    seen = state.setdefault("x_seen", {})
+    alerts = []
+    for i in range(0, len(handles), 10):
+        batch = handles[i:i + 10]
+        found = ask(WATCH_PROMPT.format(handles=", ".join("@" + h for h in batch), minutes=minutes, since=since),
+                    batch)
+        for p in (found or {}).get("posts", []) if isinstance(found, dict) else []:
+            handle = str(p.get("handle", "")).lstrip("@")
+            match = next((h for h in batch if h.lower() == handle.lower()), None)
+            age = p.get("minutes_ago")
+            if not match or not p.get("pick") or not isinstance(age, (int, float)) or age > minutes:
+                continue
+            key = f'{match}|{p.get("url") or p.get("pick")}'
+            if key in seen:
+                continue
+            seen[key] = now
+            p["handle"] = match
+            # Post wording is free-form ("Cowboys vs. Eagles"), so allow extra words on the US side.
+            place = match_us(catalog, "", p.get("question", ""), p.get("side", ""), loose=True) if catalog else None
+            alerts.append(format_post_alert(p, watch[match], place))
+    for k in [k for k, v in seen.items() if now - v > 3 * 86400]:
+        del seen[k]
+    return alerts
 
 # ---------------------------------------------------------------- messages
 
@@ -898,8 +1018,8 @@ def format_split_alert(m, title, side, n, total, paid, cfg, score, why, place=No
 def how_to(place, side, price, slug, title):
     """Payout plus tap-by-tap steps to place the bet (on Polymarket US when `place` is set)."""
     e = html.escape
-    payout = 100 / price if price > 0 else 0
-    head = f"💵 About {price * 100:.0f}¢ a share, pays $1 if right ($100 → ${payout:,.0f})"
+    payout = 100 / price if price else 0
+    head = f"💵 About {price * 100:.0f}¢ a share, pays $1 if right ($100 → ${payout:,.0f})" if price else None
     if place:
         app, link, name = "the Polymarket US app (or polymarket.us)", us_link(place["event"]), place["event_title"]
         button = place["button"]
@@ -910,12 +1030,13 @@ def how_to(place, side, price, slug, title):
         app, link, name, button = "Polymarket", market_link(slug), title, side
         market = f"Find “{e(title)}” and tap "
     tap = f"{market}<b>{e(str(button))}</b>" if market else f"Tap <b>{e(str(button))}</b>"
+    around = f" (around {price * 100:.0f}¢; the price there may differ a little)" if price else ""
     return "\n".join([
-        head,
+        *([head] if head else []),
         "📲 <b>How to place it:</b>",
         f"1. Open {app} and log in.",
         f'2. Tap <a href="{link}">{e(name)}</a> (or tap Search and type “{e(name)}”).',
-        f"3. {tap} (around {price * 100:.0f}¢; the price there may differ a little).",
+        f"3. {tap}{around}.",
         "4. Type how much to spend, check what it pays if you win, then confirm."])
 
 
@@ -1178,13 +1299,17 @@ def run_once(cfg, markets=None):
         markets = fetch_markets(cfg)
     min_usd = min(cfg.big_trade_usd, cfg.fresh_wallet_min_usd, cfg.winner_min_usd, cfg.cluster_min_usd)
     trades = fetch_trades(markets.keys(), min_usd, since=now - cfg.price_move_window_min * 60)
-    us = None
+    us, catalog = None, None
     if cfg.us_only:
         catalog = us_catalog(cfg)
         us = lambda slug, question, side: match_us(catalog, slug, question, side)
     news = (lambda title: fetch_news(title, cfg.news_hours)) if cfg.news else None
     alerts = check_trades(cfg, trades, markets, state, now, us=us, news=news) + \
         check_split_bets(cfg, trades, markets, state, now, us=us, news=news)
+    try:
+        alerts += check_trader_posts(cfg, state, now, catalog if cfg.us_only else _us["catalog"])
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
+        print(f"couldn't check traders on X: {err}", file=sys.stderr, flush=True)
     if fresh:
         alerts += check_price_moves(cfg, markets, state, now, us=us, news=news)
         try:
@@ -1212,8 +1337,17 @@ def main():
     ap.add_argument("--find-chat-id", action="store_true", help="show chat ids that messaged the bot")
     ap.add_argument("--minutes", type=float, default=0, help="keep checking for this long, then exit")
     ap.add_argument("--test-grok", metavar="TITLE", help="ask Grok about one market title and print the answer")
+    ap.add_argument("--test-watch", action="store_true", help="show watched traders and their picks from the last day")
     args = ap.parse_args()
     cfg = Config()
+    if args.test_watch:
+        watch = build_watchlist(cfg)
+        print(len(watch), "traders:", {h: trader_line(i) for h, i in watch.items()})
+        state = {"watchlist": watch, "watchlist_at": time.time(), "watch_checked": time.time() - 24 * 3600}
+        cfg.watch_every_min = 0
+        for a in check_trader_posts(cfg, state, int(time.time()), fetch_us_catalog()):
+            print("----\n" + a)
+        return None
     if args.test_grok:
         if not cfg.xai_key:
             sys.exit("XAI_API_KEY is not set")

@@ -39,6 +39,13 @@ market. Nobody talking about it yet: +10. X already buzzing within the last 2 ho
 The alert gets a one-line "Grok on X" summary. At most 10 checks an hour
 (`GROK_MAX_PER_HOUR`); model set by `GROK_MODEL`. Test it with the "Test Grok" workflow.
 
+**Top traders on X** (needs `XAI_API_KEY`). Once a day the bot collects profitable traders
+(leaderboard top `WATCH_TOP`, 500, this month and all-time, $50k+ profit) who linked an X account
+on their Polymarket profile, plus any `EXTRA_X_HANDLES`. Every `WATCH_EVERY_MIN` (45) minutes Grok
+checks those accounts for newly posted picks, and you get an alert with the pick and, when it
+matches a Polymarket US market, the steps to place it. Test with the "Test Grok" workflow and
+the title `watch`.
+
 **Big bets only** (`BIG_BETS_ONLY=true`, the default). Every alert needs a bet of
 $10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
 winner behind the big bet raises its score.

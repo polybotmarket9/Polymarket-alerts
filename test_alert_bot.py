@@ -381,6 +381,34 @@ class Tests(unittest.TestCase):
         self.assertEqual(sent[0]["tools"][0]["type"], "x_search")
         self.assertIsNone(ab.grok_buzz(self.cfg, "x", "y", NOW, lambda u, p, k: {"output": []}))
 
+    def test_trader_posts(self):
+        lb = {("month", 0): [{"proxyWallet": "0x1", "userName": "bal", "xUsername": "balthazarpoly", "pnl": 407630},
+                             {"proxyWallet": "0x2", "userName": "anon", "xUsername": "", "pnl": 9e6},
+                             {"proxyWallet": "0x3", "userName": "small", "xUsername": "smol", "pnl": 900}],
+              ("all", 0): [{"proxyWallet": "0x1", "userName": "bal", "xUsername": "balthazarpoly", "pnl": 1.2e6}]}
+        get = lambda url, params: lb.get((params["timePeriod"], params["offset"]), [])
+        self.cfg.watch_extra = ["myguy"]
+        watch = ab.build_watchlist(self.cfg, get)
+        self.assertEqual(sorted(watch), ["balthazarpoly", "myguy"])
+        self.assertEqual(ab.trader_line(watch["balthazarpoly"]), "up $408k this month · $1.2M profit all-time")
+        asked = []
+        def ask(prompt, handles):
+            asked.append(handles)
+            return {"posts": [{"handle": "BalthazarPoly", "minutes_ago": 12, "pick": "Eagles to beat the Cowboys",
+                               "question": "Cowboys vs. Eagles", "side": "Eagles", "url": "https://x.com/p/1"},
+                              {"handle": "someone_else", "minutes_ago": 5, "pick": "x", "question": "y", "side": "z"}]}
+        catalog = self.us_catalog()
+        state = {"watchlist": watch, "watchlist_at": NOW}
+        alerts = ab.check_trader_posts(self.cfg, state, NOW, catalog, ask)
+        self.assertEqual(len(alerts), 1)
+        self.assertIn("@balthazarpoly</b> just posted a pick", alerts[0])
+        self.assertIn("Eagles to beat the Cowboys", alerts[0])
+        self.assertIn("1. Open the Polymarket US app", alerts[0])
+        self.assertNotIn("¢", alerts[0])
+        # Not again: too soon, and the same post is remembered.
+        self.assertEqual(ab.check_trader_posts(self.cfg, state, NOW + 60, catalog, ask), [])
+        self.assertEqual(ab.check_trader_posts(self.cfg, state, NOW + 3600, catalog, ask), [])
+
     def test_big_bets_only(self):
         self.cfg.big_bets_only = True
         small = ab.check_trades(self.cfg, [trade(3000, tx="s")], self.markets, {}, NOW,

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       title:
-        description: Market title to ask Grok about
+        description: Market title to ask Grok about (or "watch" to test the trader watchlist)
         default: "Will Bitcoin reach $100,000 in October?"
 jobs:
   test:
@@ -17,4 +17,5 @@ jobs:
       - env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           TITLE: ${{ inputs.title }}
-        run: python3 alert_bot.py --test-grok "$TITLE"
+        run: |
+          if [ "$TITLE" = "watch" ]; then python3 alert_bot.py --test-watch; else python3 alert_bot.py --test-grok "$TITLE"; fi
