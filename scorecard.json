@@ -193,5 +193,29 @@
   "cat": "politics",
   "us": "hormuz-normal",
   "score": 20
+ },
+ {
+  "t": 1792498772,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.71,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 44
+ },
+ {
+  "t": 1792501208,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "Yes",
+  "price": 0.2956,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 50
  }
 ]
