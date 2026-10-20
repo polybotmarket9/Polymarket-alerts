@@ -181,5 +181,17 @@
   "cat": "politics",
   "us": "meet-trump-2026-12-31",
   "score": 15
+ },
+ {
+  "t": 1792462897,
+  "cid": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+  "title": "Strait of Hormuz traffic returns to normal by December 31?",
+  "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+  "side": "No",
+  "price": 0.88,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "hormuz-normal",
+  "score": 20
  }
 ]
