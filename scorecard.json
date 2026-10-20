@@ -229,5 +229,41 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 30
+ },
+ {
+  "t": 1792518161,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.72,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 25
+ },
+ {
+  "t": 1792522999,
+  "cid": "0x028dc9f74bd4f1ae80594afb93e46cd579030afcab48a74e96195f4c8c67a3d3",
+  "title": "Celtics vs. Pistons",
+  "slug": "nba-bos-det-2026-10-20",
+  "side": "Pistons",
+  "price": 0.47,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-bos-det-2026-10-20",
+  "score": 55
+ },
+ {
+  "t": 1792526223,
+  "cid": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+  "title": "Strait of Hormuz traffic returns to normal by December 31?",
+  "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+  "side": "No",
+  "price": 0.88,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "hormuz-normal",
+  "score": 20
  }
 ]
