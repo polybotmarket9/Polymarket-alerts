@@ -101,6 +101,10 @@ class Config:
         # Only alert on fresh trades, and only once per trader per event every 12 hours.
         self.max_trade_age_min = env_int("MAX_TRADE_AGE_MIN", 15)
         self.repeat_hours = env_float("REPEAT_HOURS", 12)
+        # One alert per market in this many hours (stops repeats and both-sides alerts).
+        self.market_repeat_hours = env_float("MARKET_REPEAT_HOURS", 24)
+        # Alerts scoring below this are still tracked in the scorecard but not sent.
+        self.min_score = env_int("MIN_SCORE", 45)
         self.summary_days = env_float("SUMMARY_DAYS", 7)
         # Add recent news headlines (Google News) to alerts. A big bet with no news yet counts as
         # strong, except in sports, where small matches rarely make the news anyway.
@@ -372,13 +376,17 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             if us and not place:
                 print(f"skipped, not on Polymarket US: {title} ({side})", flush=True)
                 continue
+            if market_alerted(cfg, state, t.get("conditionId"), now):
+                print(f"skipped, already alerted this market: {title} ({side})", flush=True)
+                continue
             repeats[key] = now
             headlines = news(title) if news else None
             score, why = trade_score(cfg, t, m, usd, price, rec, winner, prior, headlines)
             score, why, x_line = x_check(cfg, state, now, title, side, score, why, buzz)
-            alerts.append(format_trade_alert(t, m, usd, score, why, rec, place, x_line))
+            if score >= cfg.min_score:
+                alerts.append(format_trade_alert(t, m, usd, score, why, rec, place, x_line))
             log_alert(state, now, t.get("conditionId"), title, slug, side, price,
-                      band(score), m.get("cat"), place, score)
+                      band(score), m.get("cat"), place, score, hidden=score < cfg.min_score)
     # Forget old entries so the state file stays small.
     for d in (seen, repeats):
         for k in [k for k, v in d.items() if now - v > 86400]:
@@ -435,10 +443,14 @@ def check_split_bets(cfg, trades, markets, state, now, wallet_count=None, us=Non
         if us and not place:
             print(f"skipped, not on Polymarket US: {title} ({side})", flush=True)
             continue
+        if market_alerted(cfg, state, cid, now):
+            continue
         score, why = split_score(cfg, m, len(fresh), total, paid, news(title) if news else None)
         score, why, x_line = x_check(cfg, state, now, title, side, score, why, buzz)
-        alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg, score, why, place, x_line))
-        log_alert(state, now, cid, title, m.get("slug", ""), side, paid, band(score), m.get("cat"), place, score)
+        if score >= cfg.min_score:
+            alerts.append(format_split_alert(m, title, side, len(fresh), total, paid, cfg, score, why, place, x_line))
+        log_alert(state, now, cid, title, m.get("slug", ""), side, paid, band(score), m.get("cat"), place, score,
+                  hidden=score < cfg.min_score)
     for k in [k for k, v in seen.items() if now - v > 86400]:
         del seen[k]
     for k in [k for k, v in cooldown.items() if now - v > 86400]:
@@ -471,12 +483,14 @@ def check_price_moves(cfg, markets, state, now, us=None, news=None, buzz=None):
         cooldown[cid] = now
         side, price = price_move_side(m, move)
         place = us(m["slug"], m["question"], side) if us else None
-        if us and not place:
+        if us and not place or market_alerted(cfg, state, cid, now):
             continue
         score, why = price_score(cfg, m, move, price, news(m["question"]) if news else None)
         score, why, x_line = x_check(cfg, state, now, m["question"], side, score, why, buzz)
-        alerts.append(format_price_alert(m, move, cfg, score, why, place, x_line))
-        log_alert(state, now, cid, m["question"], m["slug"], side, price, band(score), m.get("cat"), place, score)
+        if score >= cfg.min_score:
+            alerts.append(format_price_alert(m, move, cfg, score, why, place, x_line))
+        log_alert(state, now, cid, m["question"], m["slug"], side, price, band(score), m.get("cat"), place, score,
+                  hidden=score < cfg.min_score)
     for cid in [c for c in history if c not in markets]:
         del history[cid]
     for cid in [c for c, v in cooldown.items() if now - v > 86400]:
@@ -1121,7 +1135,14 @@ def format_price_alert(m, move, cfg, score, why, place=None, x_line=None):
 
 # ---------------------------------------------------------------- scorecard
 
-def log_alert(state, now, cid, title, slug, side, price, strength, cat=None, place=None, score=None):
+def market_alerted(cfg, state, cid, now):
+    """True if any alert (either side, sent or not) went out on this market recently."""
+    return bool(cid) and any(a.get("cid") == cid and now - a.get("t", 0) < cfg.market_repeat_hours * 3600
+                             for a in state.get("scorecard", []))
+
+
+def log_alert(state, now, cid, title, slug, side, price, strength, cat=None, place=None, score=None,
+              hidden=False):
     entry = {"t": now, "cid": cid, "title": title, "slug": slug, "side": str(side),
              "price": round(min(max(float(price), 0.01), 0.99), 4), "strength": strength,
              "cat": cat or "other"}
@@ -1129,6 +1150,8 @@ def log_alert(state, now, cid, title, slug, side, price, strength, cat=None, pla
         entry["us"] = place["event"]
     if score is not None:
         entry["score"] = score
+    if hidden:
+        entry["hidden"] = True  # below MIN_SCORE: tracked, not sent
     state.setdefault("scorecard", []).append(entry)
 
 
@@ -1227,7 +1250,7 @@ def send_telegram(cfg, text, post=http_post):
 def bets_text(state, n=10, get=http_get, now=None):
     """The latest alerts with how each is doing right now (or how it ended)."""
     now = now or time.time()
-    card = state.get("scorecard", [])[-n:][::-1]
+    card = [a for a in state.get("scorecard", []) if not a.get("hidden")][-n:][::-1]
     if not card:
         return "📋 No alerts yet. I'll list them here as they come in."
     live = {}

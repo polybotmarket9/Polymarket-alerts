@@ -53,6 +53,7 @@ class Tests(unittest.TestCase):
         self.cfg = ab.Config()
         self.cfg.us_only = False
         self.cfg.big_bets_only = False
+        self.cfg.min_score = 0
         self.markets = ab.fetch_markets(self.cfg, get=fake_get)
 
     def test_markets_skip_up_or_down(self):
@@ -437,6 +438,30 @@ class Tests(unittest.TestCase):
                               wallet_count=lambda w: 1, record=WINNER)
         self.assertEqual((len(small), len(big)), (0, 1))
         self.assertIn("Score: 🟢", big[0])
+
+    def test_one_alert_per_market(self):
+        state = {}
+        first = ab.check_trades(self.cfg, [trade(12000, tx="a")], self.markets, state, NOW,
+                                wallet_count=lambda w: 1, record=WINNER)
+        other = trade(15000, wallet="0xother", tx="b")
+        again = ab.check_trades(self.cfg, [other], self.markets, state, NOW + 60,
+                                wallet_count=lambda w: 1, record=WINNER)
+        later = ab.check_trades(self.cfg, [trade(15000, wallet="0xnew", ts=NOW + 89990, tx="c")],
+                                self.markets, state, NOW + 90000, wallet_count=lambda w: 1, record=WINNER)
+        self.assertEqual((len(first), len(again), len(later)), (1, 0, 1))
+        self.cfg.market_repeat_hours = 0  # the repeat was blocked by this rule, nothing else
+        state = {"scorecard": state["scorecard"][:1]}
+        self.assertEqual(len(ab.check_trades(self.cfg, [dict(other, transactionHash="d")], self.markets, state,
+                                             NOW + 60, wallet_count=lambda w: 1, record=WINNER)), 1)
+
+    def test_low_scores_tracked_not_sent(self):
+        self.cfg.min_score = 99
+        state = {}
+        sent = ab.check_trades(self.cfg, [trade(12000, tx="a")], self.markets, state, NOW,
+                               wallet_count=lambda w: 1, record=WINNER)
+        self.assertEqual(sent, [])
+        self.assertTrue(state["scorecard"][0]["hidden"])
+        self.assertIn("No alerts yet", ab.bets_text(state, get=lambda *a: []))
 
     def test_us_rejects_near_misses(self):
         cat = self.us_catalog()

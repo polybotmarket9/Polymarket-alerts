@@ -50,6 +50,10 @@ the title `watch`.
 $10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
 winner behind the big bet raises its score.
 
+**Quiet mode.** Alerts scoring under 45 (`MIN_SCORE`) aren't sent but still go on the
+scorecard, so you can see later whether they would have won. Each market gets one alert per
+24 hours (`MARKET_REPEAT_HOURS`), so the same match doesn't ping you four times or on both sides.
+
 **Polymarket US only** (`US_ONLY=true`, the default). Trades are watched on
 polymarket.com, where the volume is, but an alert is only sent when the same bet exists on
 polymarket.us. Games match by their shared event name; only the game winner is listed on
