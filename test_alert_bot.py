@@ -394,9 +394,10 @@ class Tests(unittest.TestCase):
         asked = []
         def ask(prompt, handles):
             asked.append(handles)
-            return {"posts": [{"handle": "BalthazarPoly", "minutes_ago": 12, "pick": "Eagles to beat the Cowboys",
+            return {"posts": [{"handle": "BalthazarPoly", "minutes_ago": 12, "is_pick": True, "pick": "Eagles to beat the Cowboys",
                                "question": "Cowboys vs. Eagles", "side": "Eagles", "url": "https://x.com/p/1"},
-                              {"handle": "someone_else", "minutes_ago": 5, "pick": "x", "question": "y", "side": "z"}]}
+                              {"handle": "balthazarpoly", "minutes_ago": 5, "is_pick": False, "pick": "gm"},
+                              {"handle": "someone_else", "minutes_ago": 5, "is_pick": True, "pick": "x", "question": "y", "side": "z"}]}
         catalog = self.us_catalog()
         state = {"watchlist": watch, "watchlist_at": NOW}
         alerts = ab.check_trader_posts(self.cfg, state, NOW, catalog, ask)

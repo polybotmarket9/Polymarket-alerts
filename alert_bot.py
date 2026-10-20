@@ -835,8 +835,8 @@ def grok_json(cfg, prompt, tool, post=http_post_auth, debug=False):
         return json.loads(text[text.index("{"): text.rindex("}") + 1])
     except urllib.error.HTTPError as err:
         print(f"Grok request failed: {err}: {err.read().decode(errors='replace')[:300]}", file=sys.stderr, flush=True)
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
-        print(f"Grok request failed: {err}", file=sys.stderr, flush=True)
+    except Exception as err:  # network hiccups, cut-off replies, odd JSON: skip this check
+        print(f"Grok request failed: {err!r}", file=sys.stderr, flush=True)
     return None
 
 
@@ -880,11 +880,11 @@ def x_check(cfg, state, now, title, side, score, why, buzz=None):
 # ---------------------------------------------------------------- top traders on X
 
 WATCH_PROMPT = """Use X search to read posts from these accounts: {handles}.
-Find posts made in the last {minutes} minutes (after {since} UTC) where the account shares a pick, a bet
-they placed, or a confident call on an upcoming outcome (a game, election, price level, event...).
-Ignore jokes, ads, replies with no pick, and posts older than that.
+List every post (including replies and quotes) these accounts made in the last {minutes} minutes
+(after {since} UTC). For each, set "is_pick" to true only if it shares a pick, a bet they placed or a
+position they hold, or a confident call on an upcoming outcome (a game, election, price level, event...).
 Reply with only JSON, no other text:
-{{"posts": [{{"handle": "<account, no @>", "minutes_ago": <minutes since posted>,
+{{"posts": [{{"handle": "<account, no @>", "minutes_ago": <minutes since posted>, "is_pick": true|false,
   "pick": "<what they are backing, one short plain sentence>",
   "question": "<the yes/no question or matchup it is about, e.g. 'Will Bitcoin hit $150k by December 31, 2026?' or 'Cowboys vs. Eagles'>",
   "side": "<the side they back: Yes, No, or a team/person name>",
@@ -975,7 +975,8 @@ def check_trader_posts(cfg, state, now, catalog=None, ask=None, max_minutes=6 * 
             handle = str(p.get("handle", "")).lstrip("@")
             match = next((h for h in batch if h.lower() == handle.lower()), None)
             age = p.get("minutes_ago")
-            if not match or not p.get("pick") or not isinstance(age, (int, float)) or age > minutes:
+            if not match or not p.get("is_pick") or not p.get("pick") or not isinstance(age, (int, float)) \
+                    or age > minutes:
                 continue
             key = f'{match}|{p.get("url") or p.get("pick")}'
             if key in seen:
@@ -1378,8 +1379,8 @@ def main():
                 markets, markets_at = run_once(cfg), time.time()
             else:
                 run_once(cfg, markets)
-        except (urllib.error.URLError, TimeoutError, ValueError) as err:
-            print(f"check failed, retrying next round: {err}", file=sys.stderr, flush=True)
+        except Exception as err:  # never let one bad round stop the bot
+            print(f"check failed, retrying next round: {err!r}", file=sys.stderr, flush=True)
         time.sleep(max(0, min(cfg.poll_seconds, stop - time.time())))
 
 
