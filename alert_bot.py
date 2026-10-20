@@ -1208,6 +1208,9 @@ def main():
     if args.test_grok:
         if not cfg.xai_key:
             sys.exit("XAI_API_KEY is not set")
+        # Shape only (never the key itself), to spot a wrong paste.
+        print(f"key: {len(cfg.xai_key)} characters, starts with 'xai-': {cfg.xai_key.startswith('xai-')}, "
+              f"has spaces: {' ' in cfg.xai_key}")
         try:
             req = urllib.request.Request("https://api.x.ai/v1/models",
                                          headers={"Authorization": f"Bearer {cfg.xai_key}"})
