@@ -820,6 +820,9 @@ def grok_buzz(cfg, title, side, now=None, post=http_post_auth):
                               "tools": [{"type": "x_search", "from_date": day}]}, cfg.xai_key)
         text = response_text(resp)
         found = json.loads(text[text.index("{"): text.rindex("}") + 1])
+    except urllib.error.HTTPError as err:
+        print(f"Grok X check failed: {err}: {err.read().decode(errors='replace')[:300]}", file=sys.stderr, flush=True)
+        return None
     except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as err:
         print(f"Grok X check failed: {err}", file=sys.stderr, flush=True)
         return None
@@ -1205,6 +1208,13 @@ def main():
     if args.test_grok:
         if not cfg.xai_key:
             sys.exit("XAI_API_KEY is not set")
+        try:
+            req = urllib.request.Request("https://api.x.ai/v1/models",
+                                         headers={"Authorization": f"Bearer {cfg.xai_key}"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                print("models:", [m.get("id") for m in json.loads(r.read().decode()).get("data", [])])
+        except urllib.error.HTTPError as err:
+            print("models:", err, err.read().decode(errors="replace")[:300])
         print(grok_buzz(cfg, args.test_grok, "Yes"))
         return None
     if args.find_chat_id:
