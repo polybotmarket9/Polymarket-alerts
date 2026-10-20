@@ -115,6 +115,8 @@ class Config:
         # Watch profitable traders' X accounts (linked on their Polymarket profile) for posted picks.
         self.watch_traders = os.environ.get("WATCH_TRADERS", "true").lower() not in ("0", "false", "no")
         self.watch_every_min = env_int("WATCH_EVERY_MIN", 45)
+        # A fast model is enough to read a few accounts' recent posts (the reasoning one times out).
+        self.grok_watch_model = os.environ.get("GROK_WATCH_MODEL", "grok-4.20-0309-non-reasoning")
         self.watch_top = env_int("WATCH_TOP", 500)  # leaderboard places to scan, per period
         self.watch_min_profit = env_float("WATCH_MIN_PROFIT", 50000)
         self.watch_extra = [h.strip().lstrip("@") for h in os.environ.get("EXTRA_X_HANDLES", "").split(",")
@@ -820,10 +822,10 @@ def response_text(resp):
     return "\n".join(parts)
 
 
-def grok_json(cfg, prompt, tool, post=http_post_auth, debug=False):
+def grok_json(cfg, prompt, tool, post=http_post_auth, debug=False, model=None):
     """Ask Grok with an X search tool and parse the JSON it replies with, or None."""
     try:
-        resp = post(XAI_URL, {"model": cfg.grok_model, "input": prompt, "tools": [tool]}, cfg.xai_key)
+        resp = post(XAI_URL, {"model": model or cfg.grok_model, "input": prompt, "tools": [tool]}, cfg.xai_key)
         if debug:
             print("output items:", [i.get("type") for i in resp.get("output", [])],
                   "citations:", len(resp.get("citations") or []), flush=True)
@@ -880,9 +882,9 @@ def x_check(cfg, state, now, title, side, score, why, buzz=None):
 # ---------------------------------------------------------------- top traders on X
 
 WATCH_PROMPT = """Use X search to read posts from these accounts: {handles}.
-List every post (including replies and quotes) these accounts made in the last {minutes} minutes
-(after {since} UTC). For each, set "is_pick" to true only if it shares a pick, a bet they placed or a
-position they hold, or a confident call on an upcoming outcome (a game, election, price level, event...).
+Find posts (including replies and quotes) these accounts made in the last {minutes} minutes
+(after {since} UTC) that share a pick, a bet they placed or a position they hold, or a confident call on
+an upcoming outcome (a game, election, price level, event...). Set "is_pick" to true for those.
 Reply with only JSON, no other text:
 {{"posts": [{{"handle": "<account, no @>", "minutes_ago": <minutes since posted>, "is_pick": true|false,
   "pick": "<what they are backing, one short plain sentence>",
@@ -960,7 +962,8 @@ def check_trader_posts(cfg, state, now, catalog=None, ask=None, max_minutes=6 * 
     since = time.strftime("%Y-%m-%d %H:%M", time.gmtime(now - minutes * 60))
     day = time.strftime("%Y-%m-%d", time.gmtime(now - 86400))
     ask = ask or (lambda prompt, handles: grok_json(cfg, prompt, {"type": "x_search", "from_date": day,
-                                                                  "allowed_x_handles": handles}, debug=debug))
+                                                                  "allowed_x_handles": handles},
+                                                    debug=debug, model=cfg.grok_watch_model))
     watch = state["watchlist"]
     handles = sorted(watch)
     seen = state.setdefault("x_seen", {})
@@ -1348,7 +1351,7 @@ def main():
         print(len(watch), "traders:", {h: trader_line(i) for h, i in watch.items()})
         state = {"watchlist": watch, "watchlist_at": time.time(), "watch_checked": time.time() - 24 * 3600}
         cfg.watch_every_min = 0
-        for a in check_trader_posts(cfg, state, int(time.time()), fetch_us_catalog(), max_minutes=24 * 60, debug=True):
+        for a in check_trader_posts(cfg, state, int(time.time()), fetch_us_catalog(), max_minutes=3 * 60, debug=True):
             print("----\n" + a)
         return None
     if args.test_grok:
