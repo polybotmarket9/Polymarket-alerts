@@ -454,6 +454,14 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(ab.check_trades(self.cfg, [dict(other, transactionHash="d")], self.markets, state,
                                              NOW + 60, wallet_count=lambda w: 1, record=WINNER)), 1)
 
+    def test_skips_traders_down_overall(self):
+        loser = lambda w: {"all": {"profit": -500, "volume": 90000}, "month": {"profit": 0, "volume": 0}}
+        old = ab.check_trades(self.cfg, [trade(12000, tx="a")], self.markets, {}, NOW,
+                              wallet_count=lambda w: 100, record=loser)
+        new = ab.check_trades(self.cfg, [trade(12000, tx="b")], self.markets, {}, NOW,
+                              wallet_count=lambda w: 1, record=loser)
+        self.assertEqual((len(old), len(new)), (0, 1))
+
     def test_low_scores_tracked_not_sent(self):
         self.cfg.min_score = 99
         state = {}

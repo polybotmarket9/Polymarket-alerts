@@ -105,6 +105,8 @@ class Config:
         self.market_repeat_hours = env_float("MARKET_REPEAT_HOURS", 24)
         # Alerts scoring below this are still tracked in the scorecard but not sent.
         self.min_score = env_int("MIN_SCORE", 45)
+        # Don't alert on traders who are down money overall (brand-new accounts are still allowed).
+        self.skip_losers = os.environ.get("SKIP_LOSERS", "true").lower() not in ("0", "false", "no")
         self.summary_days = env_float("SUMMARY_DAYS", 7)
         # Add recent news headlines (Google News) to alerts. A big bet with no news yet counts as
         # strong, except in sports, where small matches rarely make the news anyway.
@@ -359,6 +361,9 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             winner = t.get("side") == "BUY" and usd >= cfg.winner_min_usd and is_proven_winner(cfg, rec)
             if winner:
                 reasons.insert(0, "🏆 Proven winner (record below)")
+        if reasons and cfg.skip_losers and prior is None and rec and rec["all"]["profit"] < 0:
+            print(f"skipped, trader is down overall: {t.get('title')}", flush=True)
+            continue
         if reasons:
             side, price = follow_side(t, m)
             idx = t.get("outcomeIndex")
