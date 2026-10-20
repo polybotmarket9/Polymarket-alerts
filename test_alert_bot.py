@@ -436,8 +436,13 @@ class Tests(unittest.TestCase):
                                 wallet_count=lambda w: 1, record=WINNER)
         big = ab.check_trades(self.cfg, [trade(12000, tx="b")], self.markets, {}, NOW,
                               wallet_count=lambda w: 1, record=WINNER)
-        self.assertEqual((len(small), len(big)), (0, 1))
+        self.assertEqual((len(small), len(big)), (1, 1))  # small bet passes: it's a proven winner
         self.assertIn("Score: 🟢", big[0])
+        tiny = ab.check_trades(self.cfg, [trade(2500, tx="t")], self.markets, {}, NOW,
+                               wallet_count=lambda w: 1, record=WINNER)
+        nobody = ab.check_trades(self.cfg, [trade(5000, tx="n")], self.markets, {}, NOW,
+                                 wallet_count=lambda w: 1, record=NOBODY)
+        self.assertEqual((len(tiny), len(nobody)), (0, 0))
 
     def test_one_alert_per_market(self):
         state = {}

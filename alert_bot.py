@@ -93,7 +93,7 @@ class Config:
         self.us_only = os.environ.get("US_ONLY", "true").lower() not in ("0", "false", "no")
         self.us_refresh_min = env_int("US_REFRESH_MIN", 30)
         # A "proven winner" has at least this many settled bets, this win rate and profit.
-        self.winner_min_usd = env_float("WINNER_MIN_USD", 2000)
+        self.winner_min_usd = env_float("WINNER_MIN_USD", 3000)
         self.winner_min_profit = env_float("WINNER_MIN_PROFIT", 10000)
         self.winner_min_return = env_float("WINNER_MIN_RETURN", 0.05)  # profit / amount traded
         # Bets on a side already priced 95c+ are near-certain and carry little information.
@@ -345,11 +345,13 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
         m = markets.get(t.get("conditionId"), {})
         reasons, prior = [], None
         big = big_bar(cfg, m)
-        if cfg.big_bets_only and usd < big:
+        # Under big-bets-only, a smaller bet only counts if it's from a proven winner.
+        small = cfg.big_bets_only and usd < big
+        if small and (usd < cfg.winner_min_usd or t.get("side") != "BUY"):
             continue
         if usd >= big:
             reasons.append(f"💰 Big bet: over ${big:,.0f} in one go")
-        if usd >= cfg.fresh_wallet_min_usd and t.get("side") == "BUY":
+        if not small and usd >= cfg.fresh_wallet_min_usd and t.get("side") == "BUY":
             n = wallet_count(t["proxyWallet"])
             # The trade itself counts, so "prior" = n - 1.
             if n - 1 <= cfg.fresh_wallet_max_prior_trades:
@@ -361,6 +363,8 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             winner = t.get("side") == "BUY" and usd >= cfg.winner_min_usd and is_proven_winner(cfg, rec)
             if winner:
                 reasons.insert(0, "🏆 Proven winner (record below)")
+        if small and not winner:
+            continue
         if reasons and cfg.skip_losers and prior is None and rec and rec["all"]["profit"] < 0:
             print(f"skipped, trader is down overall: {t.get('title')}", flush=True)
             continue

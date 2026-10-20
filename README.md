@@ -14,7 +14,7 @@ signal worth a look, not proof of anything.
 | Price jump | price moves **10+ points** (e.g. 30¢ to 40¢) within **60 min** on a market that traded **between $1k and $100k** in the last day | A quiet market suddenly moving hard. |
 
 **Proven winners.** The bot looks up each sizeable trader's public results on
-Polymarket's leaderboard. A **$2,000+** bet from someone with **$10,000+ all-time
+Polymarket's leaderboard. A **$3,000+** bet from someone with **$10,000+ all-time
 profit, a 5%+ return on everything they've traded, and a profitable last month**
 triggers an alert on its own, and every trade alert shows the trader's record.
 
@@ -47,7 +47,8 @@ matches a Polymarket US market, the steps to place it. Test with the "Test Grok"
 the title `watch`.
 
 **Big bets only** (`BIG_BETS_ONLY=true`, the default). Every alert needs a bet of
-$10,000+ ($50,000+ for sports), or a split bet adding up to that. A new account or a proven
+$10,000+ ($50,000+ for sports), or a split bet adding up to that. The one exception is a
+proven winner: their bets count from $3,000 (`WINNER_MIN_USD`). A new account or a proven
 winner behind the big bet raises its score.
 
 **Quiet mode.** Alerts scoring under 45 (`MIN_SCORE`) aren't sent but still go on the
