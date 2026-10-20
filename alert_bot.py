@@ -109,7 +109,7 @@ class Config:
         # Grok X check: on alerts scoring GROK_MIN_SCORE+, ask Grok (xAI) what X is saying about the
         # market. Off unless XAI_API_KEY is set. Capped per hour to keep the cost small.
         self.xai_key = os.environ.get("XAI_API_KEY", "").strip().strip("\"'")
-        self.grok_model = os.environ.get("GROK_MODEL", "grok-4.5")
+        self.grok_model = os.environ.get("GROK_MODEL", "grok-4.7")
         self.grok_min_score = env_int("GROK_MIN_SCORE", 60)
         self.grok_max_per_hour = env_int("GROK_MAX_PER_HOUR", 10)
         self.scorecard_file = os.environ.get(
