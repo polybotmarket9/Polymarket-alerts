@@ -946,7 +946,7 @@ def format_post_alert(post, info, place):
     return "\n".join(lines)
 
 
-def check_trader_posts(cfg, state, now, catalog=None, ask=None):
+def check_trader_posts(cfg, state, now, catalog=None, ask=None, max_minutes=6 * 60, debug=False):
     """Every WATCH_EVERY_MIN, ask Grok whether watched traders posted picks. Returns alert texts."""
     if not (cfg.xai_key or ask) or not cfg.watch_traders:
         return []
@@ -955,12 +955,12 @@ def check_trader_posts(cfg, state, now, catalog=None, ask=None):
     if now - state.get("watchlist_at", 0) > 86400 or "watchlist" not in state:
         state["watchlist"], state["watchlist_at"] = build_watchlist(cfg), now
         print(f"watching {len(state['watchlist'])} traders on X", flush=True)
-    minutes = int(min(now - state.get("watch_checked", now - cfg.watch_every_min * 60), 6 * 3600) // 60) + 5
+    minutes = int(min(now - state.get("watch_checked", now - cfg.watch_every_min * 60), max_minutes * 60) // 60) + 5
     state["watch_checked"] = now
     since = time.strftime("%Y-%m-%d %H:%M", time.gmtime(now - minutes * 60))
     day = time.strftime("%Y-%m-%d", time.gmtime(now - 86400))
     ask = ask or (lambda prompt, handles: grok_json(cfg, prompt, {"type": "x_search", "from_date": day,
-                                                                  "allowed_x_handles": handles}))
+                                                                  "allowed_x_handles": handles}, debug=debug))
     watch = state["watchlist"]
     handles = sorted(watch)
     seen = state.setdefault("x_seen", {})
@@ -969,6 +969,8 @@ def check_trader_posts(cfg, state, now, catalog=None, ask=None):
         batch = handles[i:i + 10]
         found = ask(WATCH_PROMPT.format(handles=", ".join("@" + h for h in batch), minutes=minutes, since=since),
                     batch)
+        if debug:
+            print("batch", batch, "->", json.dumps(found)[:1500], flush=True)
         for p in (found or {}).get("posts", []) if isinstance(found, dict) else []:
             handle = str(p.get("handle", "")).lstrip("@")
             match = next((h for h in batch if h.lower() == handle.lower()), None)
@@ -1345,7 +1347,7 @@ def main():
         print(len(watch), "traders:", {h: trader_line(i) for h, i in watch.items()})
         state = {"watchlist": watch, "watchlist_at": time.time(), "watch_checked": time.time() - 24 * 3600}
         cfg.watch_every_min = 0
-        for a in check_trader_posts(cfg, state, int(time.time()), fetch_us_catalog()):
+        for a in check_trader_posts(cfg, state, int(time.time()), fetch_us_catalog(), max_minutes=24 * 60, debug=True):
             print("----\n" + a)
         return None
     if args.test_grok:
