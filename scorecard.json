@@ -330,6 +330,20 @@
   "strength": "medium",
   "cat": "sports",
   "us": "cs2-faze-jjh-2026-10-21",
-  "score": 59
+  "score": 59,
+  "result": "lost"
+ },
+ {
+  "t": 1792605209,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "Yes",
+  "price": 0.2711,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 24,
+  "hidden": true
  }
 ]
