@@ -319,5 +319,17 @@
   "us": "nba-okc-sa-2026-10-20",
   "score": 50,
   "result": "lost"
+ },
+ {
+  "t": 1792589014,
+  "cid": "0x35b46c663f7089774c0e8fe55110501c94653c85fef244d3f76ea396a2581369",
+  "title": "Counter-Strike: FaZe vs JiJieHao (BO3) - DraculaN Playoffs",
+  "slug": "cs2-faze-jjh-2026-10-21",
+  "side": "FaZe",
+  "price": 0.5064,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-faze-jjh-2026-10-21",
+  "score": 59
  }
 ]
