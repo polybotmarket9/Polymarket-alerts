@@ -278,6 +278,44 @@
   "cat": "sports",
   "us": "nhl-col-nj-2026-10-20",
   "score": 30,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
+ },
+ {
+  "t": 1792538594,
+  "cid": "0xeb0e47473e54ae49b75216d946123fefa37fcf217f2a40cff5dbe5e600d25e4d",
+  "title": "Kings vs. Capitals",
+  "slug": "nhl-lak-wsh-2026-10-20",
+  "side": "Kings",
+  "price": 0.4,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nhl-la-was-2026-10-20",
+  "score": 55,
+  "result": "won"
+ },
+ {
+  "t": 1792544703,
+  "cid": "0xfa78f1c2f29c32569d416d30a3dab126066730a89cc9393ad08eac84d8ab8aa3",
+  "title": "Wild vs. Oilers",
+  "slug": "nhl-min-edm-2026-10-20",
+  "side": "Oilers",
+  "price": 0.53,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nhl-min-edm-2026-10-20",
+  "score": 49
+ },
+ {
+  "t": 1792546525,
+  "cid": "0x738bf4c43717a69335109fc8882915b55be456cb42811cf008d97fdf3a8cb6a8",
+  "title": "Thunder vs. Spurs",
+  "slug": "nba-okc-sas-2026-10-20",
+  "side": "Spurs",
+  "price": 0.51,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-okc-sa-2026-10-20",
+  "score": 50
  }
 ]
