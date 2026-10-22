@@ -456,5 +456,19 @@
   "score": 31,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1792657418,
+  "cid": "0x8ab6457e68e56f7ebb7e7ab4350b07f3084e9f46cd519e010833d583aed405a2",
+  "title": "Dota 2: Team Yandex vs GamerLegion (BO3) - PARI Universe Group A",
+  "slug": "dota2-ty-gl-2026-10-22",
+  "side": "Team Yandex",
+  "price": 0.88,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "dota2-ty-gl-2026-10-22",
+  "score": 39,
+  "hidden": true,
+  "result": "won"
  }
 ]
