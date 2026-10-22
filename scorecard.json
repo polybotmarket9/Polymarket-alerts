@@ -357,7 +357,8 @@
   "cat": "sports",
   "us": "nba-ind-no-2026-10-21",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792618590,
@@ -370,7 +371,8 @@
   "cat": "sports",
   "us": "nba-cha-bkn-2026-10-21",
   "score": 25,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792618590,
@@ -383,7 +385,8 @@
   "cat": "sports",
   "us": "nba-atl-orl-2026-10-21",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792619608,
@@ -395,7 +398,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-mil-was-2026-10-21",
-  "score": 45
+  "score": 45,
+  "result": "lost"
  },
  {
   "t": 1792621038,
@@ -408,7 +412,8 @@
   "cat": "sports",
   "us": "nba-min-mia-2026-10-21",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792622333,
@@ -421,7 +426,8 @@
   "cat": "sports",
   "us": "nba-uta-mem-2026-10-21",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792625958,
@@ -434,7 +440,8 @@
   "cat": "sports",
   "us": "nhl-fla-ott-2026-10-21",
   "score": 40,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792629631,
@@ -447,6 +454,7 @@
   "cat": "sports",
   "us": "nba-dal-hou-2026-10-21",
   "score": 31,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  }
 ]
