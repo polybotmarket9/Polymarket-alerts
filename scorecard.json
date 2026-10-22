@@ -483,5 +483,43 @@
   "us": "hormuz-normal",
   "score": 35,
   "hidden": true
+ },
+ {
+  "t": 1792693284,
+  "cid": "0xfa657d6b58e1b7cb79969d206b46093a17d6b16b8789c9308f46e4b87d7da056",
+  "title": "Cavaliers vs. 76ers",
+  "slug": "nba-cle-phi-2026-10-22",
+  "side": "Cavaliers",
+  "price": 0.44,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-cle-phi-2026-10-22",
+  "score": 60
+ },
+ {
+  "t": 1792699337,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.72,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 19,
+  "hidden": true
+ },
+ {
+  "t": 1792709753,
+  "cid": "0x1016454b1997794ce1f44c5c613479a68865e08dfa5e8d1d9c36f817d6a25730",
+  "title": "Red Wings vs. Canucks",
+  "slug": "nhl-det-van-2026-10-22",
+  "side": "Red Wings",
+  "price": 0.6055,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nhl-det-van-2026-10-22",
+  "score": 33,
+  "hidden": true
  }
 ]
