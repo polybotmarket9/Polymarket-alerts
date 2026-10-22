@@ -470,5 +470,18 @@
   "score": 39,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1792682342,
+  "cid": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+  "title": "Strait of Hormuz traffic returns to normal by December 31?",
+  "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+  "side": "No",
+  "price": 0.89,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "hormuz-normal",
+  "score": 35,
+  "hidden": true
  }
 ]
