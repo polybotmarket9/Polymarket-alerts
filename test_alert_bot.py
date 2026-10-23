@@ -491,6 +491,12 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(run("winrate", sharp)), 0)
         self.assertEqual(len(run("odds", favorite, fresh=True)), 1)  # new accounts always pass
         self.assertEqual(len(run("odds", lambda w: {"n": 5, "wins": 5, "avg_price": 0.3})), 0)
+        self.cfg.trader_filter = "proven"
+        nobody = ab.check_trades(self.cfg, [trade(12000, tx="p")], self.markets, {}, NOW,
+                                 wallet_count=lambda w: 100, record=NOBODY)
+        winner = ab.check_trades(self.cfg, [trade(12000, tx="q")], self.markets, {}, NOW,
+                                 wallet_count=lambda w: 100, record=WINNER)
+        self.assertEqual((len(nobody), len(winner)), (0, 1))
 
     def test_low_scores_tracked_not_sent(self):
         self.cfg.min_score = 99

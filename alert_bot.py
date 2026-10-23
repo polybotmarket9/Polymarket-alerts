@@ -106,7 +106,8 @@ class Config:
         # Alerts scoring below this are still tracked in the scorecard but not sent.
         self.min_score = env_int("MIN_SCORE", 45)
         # Don't alert on traders who are down money overall (brand-new accounts are still allowed).
-        # Trader filter (new accounts are always allowed): "odds" = wins clearly more often than
+        # Trader filter (new accounts are always allowed): "proven" = proven winners only;
+        # "odds" = wins clearly more often than
         # their prices predicted; "winrate" = wins at least WIN_RATE_MIN of bets; "off" = no filter.
         self.trader_filter = os.environ.get("TRADER_FILTER", "off").strip().lower()
         self.win_rate_min = env_float("WIN_RATE_MIN", 0.80)
@@ -437,6 +438,9 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
             continue
         if reasons and cfg.skip_losers and prior is None and rec and rec["all"]["profit"] < 0:
             print(f"skipped, trader is down overall: {t.get('title')}", flush=True)
+            continue
+        if reasons and prior is None and cfg.trader_filter == "proven" and not winner:
+            print(f"skipped, trader has no proven record: {t.get('title')}", flush=True)
             continue
         if reasons and prior is None and cfg.trader_filter in ("odds", "winrate"):
             got = bets(t["proxyWallet"])
