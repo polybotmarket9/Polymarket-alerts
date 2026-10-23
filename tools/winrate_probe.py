@@ -1,35 +1,23 @@
-import sys
+import sys, time
 sys.path.insert(0, ".")
-from alert_bot import http_get, DATA
+import alert_bot as ab
 
-wallets = []
-for period in ("month", "all"):
-    for r in http_get(f"{DATA}/v1/leaderboard", {"timePeriod": period, "orderBy": "PNL", "limit": 8}):
-        wallets.append(("top-" + period, r.get("proxyWallet"), r.get("pnl")))
-for t in http_get(f"{DATA}/trades", {"limit": 500, "filterType": "CASH", "filterAmount": 3000}):
-    if len(wallets) >= 30:
+cfg = ab.Config()
+seen, odds, rate, total = set(), 0, 0, 0
+for t in ab.http_get(f"{ab.DATA}/trades", {"limit": 1000, "filterType": "CASH", "filterAmount": 10000}):
+    w = t["proxyWallet"]
+    if w in seen or t.get("side") != "BUY":
+        continue
+    seen.add(w)
+    b = ab.bet_record(w, 90)
+    if b["n"] < cfg.win_min_bets:
+        print(f"{w[:10]} too few bets ({b['n']})", flush=True)
+        continue
+    total += 1
+    cfg.trader_filter = "odds"; o = ab.passes_trader_filter(cfg, b)
+    cfg.trader_filter = "winrate"; r = ab.passes_trader_filter(cfg, b)
+    odds += o; rate += r
+    print(f"{w[:10]} n={b['n']} win={b['wins'] / b['n']:.0%} avg={b['avg_price']:.2f} odds={o} 80%={r}", flush=True)
+    if len(seen) >= 60:
         break
-    if t["proxyWallet"] not in [w[1] for w in wallets]:
-        wallets.append(("big-trade", t["proxyWallet"], None))
-
-for kind, w, pnl in wallets:
-    closed = []
-    for off in (0, 50):
-        rows = http_get(f"{DATA}/closed-positions", {"user": w, "limit": 50, "offset": off,
-                                                     "sortBy": "TIMESTAMP", "sortDirection": "DESC"})
-        closed += rows
-        if len(rows) < 50:
-            break
-    red = http_get(f"{DATA}/positions", {"user": w, "redeemable": "true", "limit": 100, "sizeThreshold": 0})
-    lost_unredeemed = [p for p in red if float(p.get("curPrice", 1)) == 0]
-    won_unredeemed = [p for p in red if float(p.get("curPrice", 0)) == 1]
-    wins = sum(float(p["realizedPnl"]) > 0 for p in closed)
-    ts = [p["timestamp"] for p in closed]
-    order_ok = ts == sorted(ts, reverse=True)
-    n = len(closed) + len(red)
-    full = (wins + len(won_unredeemed)) / n if n else None
-    avgp = sum(float(p["avgPrice"]) for p in closed) / len(closed) if closed else 0
-    print(f"{kind:10} {w[:10]} pnl={pnl} closed={len(closed)} closedWin={wins} "
-          f"redeemable lost={len(lost_unredeemed)} won={len(won_unredeemed)} "
-          f"winrate_closed={wins/len(closed) if closed else None:} winrate_full={full} avgPrice={avgp:.2f} sorted={order_ok}",
-          flush=True)
+print(f"SUMMARY traders with enough bets: {total}; beat-the-odds pass: {odds}; 80% pass: {rate}")

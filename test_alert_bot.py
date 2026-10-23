@@ -467,6 +467,31 @@ class Tests(unittest.TestCase):
                               wallet_count=lambda w: 1, record=loser)
         self.assertEqual((len(old), len(new)), (0, 1))
 
+    def test_bet_record_counts_uncashed_losses(self):
+        closed = [{"timestamp": NOW - 86400, "realizedPnl": 50, "avgPrice": 0.4}] * 9 + \
+                 [{"timestamp": NOW - 200 * 86400, "realizedPnl": 50, "avgPrice": 0.4}]
+        open_ = [{"endDate": "2027-01-10", "curPrice": 0, "avgPrice": 0.6},
+                 {"endDate": "2020-01-01", "curPrice": 0, "avgPrice": 0.6},
+                 {"endDate": "2027-01-10", "curPrice": 0.5, "avgPrice": 0.6}]
+        get = lambda url, params=None: closed if "closed" in url else open_
+        rec = ab.bet_record("0xq", 90, get, now=NOW)
+        self.assertEqual((rec["n"], rec["wins"], round(rec["avg_price"], 2)), (10, 9, 0.42))
+
+    def test_trader_filter(self):
+        sharp = lambda w: {"n": 40, "wins": 26, "avg_price": 0.45}     # 65% at 45c: beats the odds
+        favorite = lambda w: {"n": 40, "wins": 34, "avg_price": 0.88}  # 85% at 88c: doesn't
+        def run(kind, bets, fresh=False, tx="a"):
+            self.cfg.trader_filter = kind
+            return ab.check_trades(self.cfg, [trade(12000, tx=tx)], self.markets, {}, NOW, bets=bets,
+                                   wallet_count=lambda w: 1 if fresh else 100, record=WINNER)
+        self.assertEqual(len(run("odds", sharp)), 1)
+        self.assertIn("wins 65% of bets at 45¢", run("odds", sharp)[0])
+        self.assertEqual(len(run("odds", favorite)), 0)
+        self.assertEqual(len(run("winrate", favorite)), 1)
+        self.assertEqual(len(run("winrate", sharp)), 0)
+        self.assertEqual(len(run("odds", favorite, fresh=True)), 1)  # new accounts always pass
+        self.assertEqual(len(run("odds", lambda w: {"n": 5, "wins": 5, "avg_price": 0.3})), 0)
+
     def test_low_scores_tracked_not_sent(self):
         self.cfg.min_score = 99
         state = {}

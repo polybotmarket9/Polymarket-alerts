@@ -106,6 +106,13 @@ class Config:
         # Alerts scoring below this are still tracked in the scorecard but not sent.
         self.min_score = env_int("MIN_SCORE", 45)
         # Don't alert on traders who are down money overall (brand-new accounts are still allowed).
+        # Trader filter (new accounts are always allowed): "odds" = wins clearly more often than
+        # their prices predicted; "winrate" = wins at least WIN_RATE_MIN of bets; "off" = no filter.
+        self.trader_filter = os.environ.get("TRADER_FILTER", "off").strip().lower()
+        self.win_rate_min = env_float("WIN_RATE_MIN", 0.80)
+        self.beat_odds_by = env_float("BEAT_ODDS_BY", 0.10)
+        self.win_days = env_int("WIN_DAYS", 90)
+        self.win_min_bets = env_int("WIN_MIN_BETS", 20)
         self.skip_losers = os.environ.get("SKIP_LOSERS", "true").lower() not in ("0", "false", "no")
         self.summary_days = env_float("SUMMARY_DAYS", 7)
         # Add recent news headlines (Google News) to alerts. A big bet with no news yet counts as
@@ -271,6 +278,60 @@ def trader_record(wallet, get=http_get):
     return rec
 
 
+_bets = {}
+
+
+def parse_time(text):
+    """'2026-10-20' or '2026-10-20T18:00:00Z' -> unix time (None if unreadable)."""
+    try:
+        return calendar.timegm(time.strptime(str(text)[:10], "%Y-%m-%d"))
+    except ValueError:
+        return None
+
+
+def bet_record(wallet, days=90, get=http_get, now=None):
+    """How often a wallet's finished bets in the last `days` won, and the average price it paid.
+    Counts sold/redeemed positions plus finished ones never cashed out (losers usually aren't),
+    since Polymarket's closed list alone leaves most losses out. Cached 6h."""
+    now = now or time.time()
+    hit = _bets.get((wallet, days))
+    if hit and now - hit[1] < 6 * 3600:
+        return hit[0]
+    cutoff, bets = now - days * 86400, []
+    for off in range(0, 200, 50):
+        rows = get(f"{DATA}/closed-positions", {"user": wallet, "limit": 50, "offset": off,
+                                                "sortBy": "TIMESTAMP", "sortDirection": "DESC"})
+        recent = [r for r in rows if int(r.get("timestamp") or 0) >= cutoff]
+        bets += [(float(r.get("realizedPnl") or 0) > 0, float(r.get("avgPrice") or 0)) for r in recent]
+        if len(rows) < 50 or len(recent) < len(rows):
+            break
+    for r in get(f"{DATA}/positions", {"user": wallet, "redeemable": "true", "limit": 500, "sizeThreshold": 0}):
+        end = parse_time(r.get("endDate"))
+        if end and end < cutoff:
+            continue
+        cur = float(r.get("curPrice") or 0)
+        if cur in (0, 1):
+            bets.append((cur == 1, float(r.get("avgPrice") or 0)))
+    rec = {"n": len(bets), "wins": sum(w for w, _ in bets),
+           "avg_price": sum(p for _, p in bets) / len(bets) if bets else 0}
+    _bets[(wallet, days)] = (rec, now)
+    return rec
+
+
+def passes_trader_filter(cfg, bets):
+    if not bets or bets["n"] < cfg.win_min_bets:
+        return False
+    rate = bets["wins"] / bets["n"]
+    if cfg.trader_filter == "winrate":
+        return rate >= cfg.win_rate_min
+    return rate - bets["avg_price"] >= cfg.beat_odds_by
+
+
+def bets_text_line(bets):
+    rate = bets["wins"] / bets["n"]
+    return f"wins {rate:.0%} of bets at {bets['avg_price'] * 100:.0f}¢ average ({bets['n']} bets lately)"
+
+
 def is_proven_winner(cfg, rec):
     """Big all-time profit, a solid return on what they've traded, and still winning lately."""
     total = rec["all"]
@@ -286,6 +347,13 @@ def short_money(x):
 
 
 def record_text(rec):
+    extra = f"; {bets_text_line(rec['bets'])}" if rec.get("bets") else ""
+    if "all" not in rec:
+        return extra[2:]
+    return record_money(rec) + extra
+
+
+def record_money(rec):
     total, month = rec["all"], rec["month"]
     if not total["volume"]:
         return "no trading record yet"
@@ -325,11 +393,13 @@ def is_late(cfg, m, outcome_index, paid):
     return now_price is not None and (now_price - paid) * 100 > cfg.late_max_points
 
 
-def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None, us=None, news=None, buzz=None):
+def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=None, us=None, news=None, buzz=None,
+                 bets=None):
     """Return a list of alert messages for trades not seen before. `us(event_slug, question, side)`
     says where to place the bet on Polymarket US; alerts it can't place are dropped."""
     wallet_count = wallet_count or (lambda w: wallet_trade_count(w, cfg.fresh_wallet_max_prior_trades + 2))
     record = record or trader_record
+    bets = bets or (lambda w: bet_record(w, cfg.win_days))
     seen = state.setdefault("seen_trades", {})
     repeats = state.setdefault("trader_alerted", {})
     alerts = []
@@ -368,6 +438,12 @@ def check_trades(cfg, trades, markets, state, now, wallet_count=None, record=Non
         if reasons and cfg.skip_losers and prior is None and rec and rec["all"]["profit"] < 0:
             print(f"skipped, trader is down overall: {t.get('title')}", flush=True)
             continue
+        if reasons and prior is None and cfg.trader_filter in ("odds", "winrate"):
+            got = bets(t["proxyWallet"])
+            if not passes_trader_filter(cfg, got):
+                print(f"skipped, trader record not good enough: {t.get('title')} {got}", flush=True)
+                continue
+            rec = dict(rec or {}, bets=got)
         if reasons:
             side, price = follow_side(t, m)
             idx = t.get("outcomeIndex")
