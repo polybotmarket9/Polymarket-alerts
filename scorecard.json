@@ -494,7 +494,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-cle-phi-2026-10-22",
-  "score": 60
+  "score": 60,
+  "result": "lost"
  },
  {
   "t": 1792699337,
@@ -520,6 +521,21 @@
   "cat": "sports",
   "us": "nhl-det-van-2026-10-22",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
+ },
+ {
+  "t": 1792723141,
+  "cid": "0x3adb3ca4a12b16d8081e6458dbf4fbe13a33e873eedc93f228cbe96f87f8efa8",
+  "title": "Nuggets vs. Thunder",
+  "slug": "nba-den-okc-2026-10-22",
+  "side": "Nuggets",
+  "price": 0.4899,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-den-okc-2026-10-22",
+  "score": 44,
+  "hidden": true,
+  "result": "lost"
  }
 ]
