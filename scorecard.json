@@ -575,5 +575,18 @@
   "us": "nba-tor-was-2026-10-23",
   "score": 44,
   "hidden": true
+ },
+ {
+  "t": 1792759526,
+  "cid": "0xfef153ff34d43a4462ca8a20313ed3b117698adf90b62ba9be0abb371e7d230e",
+  "title": "Knicks vs. Celtics",
+  "slug": "nba-nyk-bos-2026-10-23",
+  "side": "Celtics",
+  "price": 0.56,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-ny-bos-2026-10-23",
+  "score": 44,
+  "hidden": true
  }
 ]
