@@ -537,5 +537,43 @@
   "score": 44,
   "hidden": true,
   "result": "lost"
+ },
+ {
+  "t": 1792746848,
+  "cid": "0x81c9225fae2ce71e7c712523f458862f2d16cd4f3881f5ca31c351ec15a2fab0",
+  "title": "LoL: Bilibili Gaming vs Movistar KOI (BO1) - Worlds Group Stage",
+  "slug": "lol-blg-mkoi-2026-10-23",
+  "side": "Bilibili Gaming",
+  "price": 0.81,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "lol-blg-mkoi-2026-10-23",
+  "score": 55
+ },
+ {
+  "t": 1792749874,
+  "cid": "0xa34edb6c898232378a9cc08744842df2cd89d278ba45b012bed3ac10c7241c4d",
+  "title": "Will Lamine Yamal win the 2026 Ballon d'Or?",
+  "slug": "ballon-dor-winner-2026",
+  "side": "No",
+  "price": 0.8385,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "uefa-bdor-2026-10-26-w",
+  "score": 34,
+  "hidden": true
+ },
+ {
+  "t": 1792750763,
+  "cid": "0xb8e93ee4e92f2dd4c8a9f3a035b4bc30a63a581e75deff3483e5668b96b21f76",
+  "title": "Raptors vs. Wizards",
+  "slug": "nba-tor-was-2026-10-23",
+  "side": "Raptors",
+  "price": 0.7,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-tor-was-2026-10-23",
+  "score": 44,
+  "hidden": true
  }
 ]
