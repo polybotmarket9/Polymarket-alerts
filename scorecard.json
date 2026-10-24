@@ -767,5 +767,18 @@
   "score": 35,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1792835145,
+  "cid": "0x4fe908c5ce401b0864bee9ca60275f9698c08ce913467ae6454e6f6efad69d89",
+  "title": "Counter-Strike: Vitality vs 9z (BO3) - PGL Masters Bucharest Group Stage",
+  "slug": "cs2-vit-9z-2026-10-24",
+  "side": "Vitality",
+  "price": 0.84,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "cs2-vit-9z-2026-10-24",
+  "score": 38,
+  "hidden": true
  }
 ]
