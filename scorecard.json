@@ -603,7 +603,8 @@
   "cat": "sports",
   "us": "mlb-tb-mil-2026-10-23",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792775149,
@@ -724,7 +725,8 @@
   "cat": "sports",
   "us": "nba-mem-gs-2026-10-23",
   "score": 30,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792810167,
@@ -749,6 +751,21 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-por-sac-2026-10-23",
-  "score": 49
+  "score": 49,
+  "result": "lost"
+ },
+ {
+  "t": 1792814587,
+  "cid": "0x42dc8b594c965f0fa5042eed05071bab1bf4d863379ba92964385e6fbb34ebb4",
+  "title": "Rockets vs. Spurs",
+  "slug": "nba-hou-sas-2026-10-23",
+  "side": "Rockets",
+  "price": 0.503,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-hou-sa-2026-10-23",
+  "score": 35,
+  "hidden": true,
+  "result": "won"
  }
 ]
