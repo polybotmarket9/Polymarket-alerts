@@ -886,7 +886,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nfl-cin-bal-2026-10-25",
-  "score": 50
+  "score": 50,
+  "result": "won"
  },
  {
   "t": 1792888352,
@@ -977,7 +978,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nfl-tb-car-2026-10-25",
-  "score": 68
+  "score": 68,
+  "result": "lost"
  },
  {
   "t": 1792931932,
@@ -1027,7 +1029,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "cs2-furia-navi-2026-10-25",
-  "score": 54
+  "score": 54,
+  "result": "lost"
  },
  {
   "t": 1792944448,
@@ -1039,7 +1042,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nfl-cle-ten-2026-10-25",
-  "score": 46
+  "score": 46,
+  "result": "won"
  },
  {
   "t": 1792948029,
@@ -1052,7 +1056,8 @@
   "cat": "sports",
   "us": "nfl-ind-min-2026-10-25",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792948683,
@@ -1064,7 +1069,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nfl-sf-atl-2026-10-25",
-  "score": 55
+  "score": 55,
+  "result": "lost"
  },
  {
   "t": 1792950257,
@@ -1076,6 +1082,84 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nfl-mia-nyj-2026-10-25",
+  "score": 50,
+  "result": "lost"
+ },
+ {
+  "t": 1792951092,
+  "cid": "0xeada9270789da2e8358f7d00c276a42f0551eb3a6be09f08cbe710c75f793e98",
+  "title": "Giants vs. Texans",
+  "slug": "nfl-nyg-hou-2026-10-25",
+  "side": "Texans",
+  "price": 0.62,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nfl-nyg-hou-2026-10-25",
+  "score": 40,
+  "hidden": true,
+  "result": "lost"
+ },
+ {
+  "t": 1792956341,
+  "cid": "0x88b7e613ec70694ceca726fc74705903ca62548f4920ece7ea4ee5697e8ce988",
+  "title": "Lakers vs. Jazz",
+  "slug": "nba-lal-uta-2026-10-25",
+  "side": "Lakers",
+  "price": 0.68,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-lal-uta-2026-10-25",
+  "score": 63
+ },
+ {
+  "t": 1792958852,
+  "cid": "0x2345fcf9acc0308ed06ce53dfe765176643720d74b1f4a3f6d2f638d99a65e0b",
+  "title": "Packers vs. Lions",
+  "slug": "nfl-gb-det-2026-10-25",
+  "side": "Lions",
+  "price": 0.65,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nfl-gb-det-2026-10-25",
+  "score": 43,
+  "hidden": true
+ },
+ {
+  "t": 1792960437,
+  "cid": "0x776e643bfc12ad924f07eca0f9b288aa3f4b334e5f8fcc37101d63b821aef988",
+  "title": "Broncos vs. Cardinals",
+  "slug": "nfl-den-ari-2026-10-25",
+  "side": "Cardinals",
+  "price": 0.3,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nfl-den-ari-2026-10-25",
+  "score": 38,
+  "hidden": true
+ },
+ {
+  "t": 1792969063,
+  "cid": "0x33dde932af130cfc2e7ecbfe75187e5fd6ae3131d4fe9a90084edd16b0aeb788",
+  "title": "Clippers vs. Thunder",
+  "slug": "nba-lac-okc-2026-10-25",
+  "side": "Thunder",
+  "price": 0.9,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-lac-okc-2026-10-25",
+  "score": 41,
+  "hidden": true
+ },
+ {
+  "t": 1792969451,
+  "cid": "0x9ea47f0acf34fc1b7bc61575546656775c34341d48e85a4da180b679e5a8bd73",
+  "title": "Pistons vs. 76ers",
+  "slug": "nba-det-phi-2026-10-25",
+  "side": "Pistons",
+  "price": 0.54,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-det-phi-2026-10-25",
   "score": 50
  }
 ]
