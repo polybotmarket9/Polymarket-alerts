@@ -831,7 +831,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "lol-cfo-mkoi-2026-10-24",
-  "score": 68
+  "score": 68,
+  "result": "won"
  },
  {
   "t": 1792866093,
@@ -870,7 +871,8 @@
   "cat": "sports",
   "us": "nba-mia-cha-2026-10-24",
   "score": 25,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792871000,
@@ -883,5 +885,30 @@
   "cat": "sports",
   "us": "nfl-cin-bal-2026-10-25",
   "score": 50
+ },
+ {
+  "t": 1792888352,
+  "cid": "0xc626748e247068e0a44852a4316b91794456d2a47b6686d69cad435d0ae2a2a4",
+  "title": "Golden Knights vs. Blue Jackets",
+  "slug": "nhl-las-cbj-2026-10-24",
+  "side": "Golden Knights",
+  "price": 0.54,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nhl-veg-cbj-2026-10-24",
+  "score": 44,
+  "hidden": true
+ },
+ {
+  "t": 1792888352,
+  "cid": "0x75d422c9dfcf2a2f66840bea4576b307714dec6e88675d4a50abe026ce7f3871",
+  "title": "Tampa Bay Rays vs. Milwaukee Brewers",
+  "slug": "mlb-tb-mil-2026-10-24",
+  "side": "Milwaukee Brewers",
+  "price": 0.17,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "mlb-tb-mil-2026-10-24",
+  "score": 59
  }
 ]
