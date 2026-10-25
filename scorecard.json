@@ -819,7 +819,8 @@
   "cat": "sports",
   "us": "nba-hou-atl-2026-10-24",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792865192,
@@ -845,7 +846,8 @@
   "cat": "sports",
   "us": "nba-was-chi-2026-10-24",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792869714,
@@ -897,7 +899,8 @@
   "cat": "sports",
   "us": "nhl-veg-cbj-2026-10-24",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792888352,
@@ -909,6 +912,32 @@
   "strength": "medium",
   "cat": "sports",
   "us": "mlb-tb-mil-2026-10-24",
-  "score": 59
+  "score": 59,
+  "result": "won"
+ },
+ {
+  "t": 1792897787,
+  "cid": "0x92c545eb4abb3ea8609537f134343b905b3a5625ce45a14d5ea60008d38fb9b2",
+  "title": "Red Wings vs. Flames",
+  "slug": "nhl-det-cal-2026-10-24",
+  "side": "Red Wings",
+  "price": 0.38,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nhl-det-cgy-2026-10-24",
+  "score": 49,
+  "result": "lost"
+ },
+ {
+  "t": 1792909088,
+  "cid": "0x592157db73ffb4e6e805120a627456a592d6ca62413337374020134b3cbf1e7d",
+  "title": "Melbourne United vs. Sydney Kings",
+  "slug": "bknbl-mel-syd-2026-10-25",
+  "side": "Melbourne United",
+  "price": 0.5109,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nbl-mel-syd-2026-10-25",
+  "score": 58
  }
 ]
