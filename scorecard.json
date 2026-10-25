@@ -938,6 +938,32 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nbl-mel-syd-2026-10-25",
-  "score": 58
+  "score": 58,
+  "result": "won"
+ },
+ {
+  "t": 1792913939,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "Yes",
+  "price": 0.2812,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 30,
+  "hidden": true
+ },
+ {
+  "t": 1792928516,
+  "cid": "0x66c5e10976d9317c380f77e91af0efa6d2b9901d53a7be3a759dbe11cf5886f6",
+  "title": "Dota 2: Team Liquid vs OG (BO3) - PARI Universe Group A",
+  "slug": "dota2-liquid-og-2026-10-25",
+  "side": "Team Liquid",
+  "price": 0.7391,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "dota2-liquid-og-2026-10-25",
+  "score": 50
  }
 ]
