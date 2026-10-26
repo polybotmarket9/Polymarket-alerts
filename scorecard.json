@@ -1271,5 +1271,42 @@
   "cat": "sports",
   "us": "nba-mem-uta-2026-10-26",
   "score": 58
+ },
+ {
+  "t": 1793030836,
+  "cid": "0x37c59e6dfd9ef8f6006fe5dc1a9159553c334bee190f2a44d679136a4f761b4e",
+  "title": "Red Wings vs. Oilers",
+  "slug": "nhl-det-edm-2026-10-26",
+  "side": "Oilers",
+  "price": 0.62,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "nhl-det-edm-2026-10-26",
+  "score": 70
+ },
+ {
+  "t": 1793037113,
+  "cid": "0x9cb1e23d74f1cf5841a5bb915503d1290f793f3fa34aa7291157cd1c82ae7e3f",
+  "title": "Wizards vs. Hornets",
+  "slug": "nba-was-cha-2026-10-26",
+  "side": "Hornets",
+  "price": 0.57,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-was-cha-2026-10-26",
+  "score": 49
+ },
+ {
+  "t": 1793041637,
+  "cid": "0x12dc2b61723b2a54fc1947a307389b5f32038e7a29a0e936ad1fe410b969d06a",
+  "title": "Will Harry Kane win the 2026 Ballon d'Or?",
+  "slug": "ballon-dor-winner-2026",
+  "side": "Yes",
+  "price": 0.7399,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "uefa-bdor-2026-10-26-w",
+  "score": 19,
+  "hidden": true
  }
 ]
