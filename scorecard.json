@@ -1207,5 +1207,69 @@
   "us": "isrpol-pm-2026-10-27",
   "score": 44,
   "hidden": true
+ },
+ {
+  "t": 1793011134,
+  "cid": "0xa34edb6c898232378a9cc08744842df2cd89d278ba45b012bed3ac10c7241c4d",
+  "title": "Will Lamine Yamal win the 2026 Ballon d'Or?",
+  "slug": "ballon-dor-winner-2026",
+  "side": "No",
+  "price": 0.895,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "uefa-bdor-2026-10-26-w",
+  "score": 39,
+  "hidden": true
+ },
+ {
+  "t": 1793016319,
+  "cid": "0xfbc1b5bad48100a1ac3348112a062474249120650e71bd2d0298978ca997013a",
+  "title": "Dota 2: OG vs GamerLegion (BO3) - PARI Universe Group A",
+  "slug": "dota2-og-gl-2026-10-26",
+  "side": "GamerLegion",
+  "price": 0.48,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "dota2-og-gl-2026-10-26",
+  "score": 54,
+  "result": "won"
+ },
+ {
+  "t": 1793017872,
+  "cid": "0x892d47fc72fb4d87071804e2e4d0b169468e4ecbc5482b1dc1de97e47d9e6938",
+  "title": "Counter-Strike: Vitality vs FUT Esports (BO3) - PGL Masters Bucharest Group Stage",
+  "slug": "cs2-vit-fut-2026-10-26",
+  "side": "FUT Esports",
+  "price": 0.36,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-vit-fut-2026-10-26",
+  "score": 55,
+  "result": "won"
+ },
+ {
+  "t": 1793021851,
+  "cid": "0x4e22f6d2ae4af77a41c1f57a3f077e3c32606c826b987406d6e27fac9ddad7aa",
+  "title": "Will Bitcoin dip to $77,500 in October?",
+  "slug": "what-price-will-bitcoin-hit-in-october-2026",
+  "side": "Yes",
+  "price": 0.525,
+  "strength": "weak",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-10",
+  "score": 30,
+  "hidden": true
+ },
+ {
+  "t": 1793029394,
+  "cid": "0x401c1614a93ddc098c97338b5452d887f4ca1617a4445c2a1a966b6aa58e28d7",
+  "title": "Grizzlies vs. Jazz",
+  "slug": "nba-mem-uta-2026-10-26",
+  "side": "Jazz",
+  "price": 0.52,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-mem-uta-2026-10-26",
+  "score": 58
  }
 ]
