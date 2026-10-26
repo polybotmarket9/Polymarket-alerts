@@ -992,7 +992,8 @@
   "cat": "sports",
   "us": "nba-tor-min-2026-10-25",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792938589,
@@ -1004,7 +1005,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-ind-bkn-2026-10-25",
-  "score": 60
+  "score": 60,
+  "result": "lost"
  },
  {
   "t": 1792940402,
@@ -1109,7 +1111,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-lal-uta-2026-10-25",
-  "score": 63
+  "score": 63,
+  "result": "won"
  },
  {
   "t": 1792958852,
@@ -1122,7 +1125,8 @@
   "cat": "sports",
   "us": "nfl-gb-det-2026-10-25",
   "score": 43,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792960437,
@@ -1135,7 +1139,8 @@
   "cat": "sports",
   "us": "nfl-den-ari-2026-10-25",
   "score": 38,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1792969063,
@@ -1148,7 +1153,8 @@
   "cat": "sports",
   "us": "nba-lac-okc-2026-10-25",
   "score": 41,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792969451,
@@ -1160,6 +1166,21 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-det-phi-2026-10-25",
-  "score": 50
+  "score": 50,
+  "result": "won"
+ },
+ {
+  "t": 1792974009,
+  "cid": "0x801561a0810c3ec27b046068244cccd5320256146c151a9b3cf785c23979345f",
+  "title": "Grizzlies vs. Kings",
+  "slug": "nba-mem-sac-2026-10-25",
+  "side": "Grizzlies",
+  "price": 0.6,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-mem-sac-2026-10-25",
+  "score": 33,
+  "hidden": true,
+  "result": "won"
  }
 ]
