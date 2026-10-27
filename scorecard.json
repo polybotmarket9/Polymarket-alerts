@@ -1273,7 +1273,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-mem-uta-2026-10-26",
-  "score": 58
+  "score": 58,
+  "result": "lost"
  },
  {
   "t": 1793030836,
@@ -1285,7 +1286,8 @@
   "strength": "strong",
   "cat": "sports",
   "us": "nhl-det-edm-2026-10-26",
-  "score": 70
+  "score": 70,
+  "result": "lost"
  },
  {
   "t": 1793037113,
@@ -1324,6 +1326,19 @@
   "strength": "medium",
   "cat": "sports",
   "us": "mlb-mil-tb-2026-10-26",
-  "score": 59
+  "score": 59,
+  "result": "lost"
+ },
+ {
+  "t": 1793078018,
+  "cid": "0x5c279bffa90f9726e69f0408304fc40ee5dbc6af7710fa8d15c570ba41be2927",
+  "title": "Counter-Strike: Alliance vs FaZe (BO3) - Tesla Cup Group A",
+  "slug": "cs2-all-faze-2026-10-27",
+  "side": "Alliance",
+  "price": 0.31,
+  "strength": "strong",
+  "cat": "sports",
+  "us": "cs2-all-faze-2026-10-27",
+  "score": 80
  }
 ]
