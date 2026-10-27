@@ -1367,5 +1367,18 @@
   "us": "isrpol-pm-2026-10-27",
   "score": 39,
   "hidden": true
+ },
+ {
+  "t": 1793121535,
+  "cid": "0x40ee7af3b229f1be9ff15eae770e1bb7c2d2f6371fc9d3c031d0ea2e9705d7eb",
+  "title": "Nets vs. Celtics",
+  "slug": "nba-bkn-bos-2026-10-27",
+  "side": "Celtics",
+  "price": 0.84,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-bkn-bos-2026-10-27",
+  "score": 28,
+  "hidden": true
  }
 ]
