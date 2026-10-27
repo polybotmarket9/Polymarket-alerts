@@ -562,7 +562,8 @@
   "cat": "sports",
   "us": "uefa-bdor-2026-10-26-w",
   "score": 34,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792750763,
@@ -1193,7 +1194,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-min-cle-2026-10-26",
-  "score": 50
+  "score": 50,
+  "result": "won"
  },
  {
   "t": 1793004829,
@@ -1219,7 +1221,8 @@
   "cat": "sports",
   "us": "uefa-bdor-2026-10-26-w",
   "score": 39,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793016319,
@@ -1294,7 +1297,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-was-cha-2026-10-26",
-  "score": 49
+  "score": 49,
+  "result": "won"
  },
  {
   "t": 1793041637,
@@ -1307,6 +1311,19 @@
   "cat": "sports",
   "us": "uefa-bdor-2026-10-26-w",
   "score": 19,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
+ },
+ {
+  "t": 1793064389,
+  "cid": "0x17a4d10c065149066df12fa321a3843a7e0b1036bdfdc500f4f0094db4ee98a8",
+  "title": "Milwaukee Brewers vs. Tampa Bay Rays",
+  "slug": "mlb-mil-tb-2026-10-26",
+  "side": "Tampa Bay Rays",
+  "price": 0.24,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "mlb-mil-tb-2026-10-26",
+  "score": 59
  }
 ]
