@@ -1483,5 +1483,18 @@
   "us": "isrpol-pm-2026-10-27",
   "score": 35,
   "hidden": true
+ },
+ {
+  "t": 1793220973,
+  "cid": "0x278974ac3dffc22762bcafe36aa4dab79cf9fc03658ee07ed1f53461d3f15531",
+  "title": "Lakers vs. Clippers",
+  "slug": "nba-lal-lac-2026-10-28",
+  "side": "Clippers",
+  "price": 0.5,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-lal-lac-2026-10-28",
+  "score": 25,
+  "hidden": true
  }
 ]
