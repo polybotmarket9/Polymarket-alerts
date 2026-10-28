@@ -1379,7 +1379,8 @@
   "cat": "sports",
   "us": "nba-bkn-bos-2026-10-27",
   "score": 28,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793131333,
@@ -1417,7 +1418,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "mlb-mil-tb-2026-10-27",
-  "score": 49
+  "score": 49,
+  "result": "won"
  },
  {
   "t": 1793145652,
@@ -1430,5 +1432,19 @@
   "cat": "politics",
   "us": "isrpol-pm-2026-10-27",
   "score": 54
+ },
+ {
+  "t": 1793153873,
+  "cid": "0xb5b924c7aac7e2d6fa01afd2a9b7e1504c648facbbf8fc6d9b3160ed9bce890c",
+  "title": "Trail Blazers vs. Lakers",
+  "slug": "nba-por-lal-2026-10-27",
+  "side": "Trail Blazers",
+  "price": 0.47,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-por-lal-2026-10-27",
+  "score": 39,
+  "hidden": true,
+  "result": "won"
  }
 ]
