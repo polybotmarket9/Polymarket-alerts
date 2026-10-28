@@ -1380,5 +1380,55 @@
   "us": "nba-bkn-bos-2026-10-27",
   "score": 28,
   "hidden": true
+ },
+ {
+  "t": 1793131333,
+  "cid": "0x9ed0ecc8b8589e67967d44c4420944a41b6a6806419019a1581d514174eee9b1",
+  "title": "Will Naftali Bennett be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.9469,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 33,
+  "hidden": true
+ },
+ {
+  "t": 1793142817,
+  "cid": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+  "title": "Strait of Hormuz traffic returns to normal by December 31?",
+  "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+  "side": "Yes",
+  "price": 0.12,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "hormuz-normal",
+  "score": 43,
+  "hidden": true
+ },
+ {
+  "t": 1793144767,
+  "cid": "0x715873c0b0c636cc4c5015571ce52b44eeb6a0fb5332280770d87fb4849825bf",
+  "title": "Milwaukee Brewers vs. Tampa Bay Rays",
+  "slug": "mlb-mil-tb-2026-10-27",
+  "side": "Tampa Bay Rays",
+  "price": 0.48,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "mlb-mil-tb-2026-10-27",
+  "score": 49
+ },
+ {
+  "t": 1793145652,
+  "cid": "0xadffc96f54f350b3655f72fe2853c81bfd705e9703f62469e6a14782ad5d4ec0",
+  "title": "Will Avigdor Lieberman be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "Yes",
+  "price": 0.0251,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 54
  }
 ]
