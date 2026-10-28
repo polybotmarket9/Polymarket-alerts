@@ -1446,5 +1446,42 @@
   "score": 39,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1793189101,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.5692,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 45
+ },
+ {
+  "t": 1793195761,
+  "cid": "0xaf2e6af4798a80e98ea2b873cd448fbb5ae96f358473868a44c38d15337e6515",
+  "title": "Heat vs. Hawks",
+  "slug": "nba-mia-atl-2026-10-28",
+  "side": "Hawks",
+  "price": 0.56,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-mia-atl-2026-10-28",
+  "score": 50
+ },
+ {
+  "t": 1793203727,
+  "cid": "0xdbe93b5a701f36076a560fa4b9ba59e365a6e8e2ea6a83764640010657277ca4",
+  "title": "Will Gadi Eizenkot be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.7041,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 35,
+  "hidden": true
  }
 ]
