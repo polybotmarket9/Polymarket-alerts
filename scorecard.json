@@ -1496,7 +1496,8 @@
   "cat": "sports",
   "us": "nba-lal-lac-2026-10-28",
   "score": 25,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1793228625,
@@ -1585,5 +1586,17 @@
   "cat": "politics",
   "us": "pres-fra-2027-04-11",
   "score": 65
+ },
+ {
+  "t": 1793251194,
+  "cid": "0xff6a852f912fc6548ec130b05de014f21b1a26342adedef20e4103bb97b4e81d",
+  "title": "Will Bitcoin dip to $62,500 in October?",
+  "slug": "what-price-will-bitcoin-hit-in-october-2026",
+  "side": "Yes",
+  "price": 0.01,
+  "strength": "medium",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-10",
+  "score": 60
  }
 ]
