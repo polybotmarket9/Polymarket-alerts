@@ -1469,7 +1469,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-mia-atl-2026-10-28",
-  "score": 50
+  "score": 50,
+  "result": "lost"
  },
  {
   "t": 1793203727,
@@ -1496,5 +1497,93 @@
   "us": "nba-lal-lac-2026-10-28",
   "score": 25,
   "hidden": true
+ },
+ {
+  "t": 1793228625,
+  "cid": "0x90b27324b67938637c42045ce15731aa02ae1f71740b99c530bb2388069e85a1",
+  "title": "Wizards vs. Cavaliers",
+  "slug": "nba-was-cle-2026-10-28",
+  "side": "Cavaliers",
+  "price": 0.78,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-was-cle-2026-10-28",
+  "score": 46,
+  "result": "won"
+ },
+ {
+  "t": 1793229285,
+  "cid": "0x68bd2cba871a2289c3cbc75396a2e180795b74c0183c1407875247243a083af7",
+  "title": "Will Bitcoin dip to $65,000 in October?",
+  "slug": "what-price-will-bitcoin-hit-in-october-2026",
+  "side": "Yes",
+  "price": 0.01,
+  "strength": "medium",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-10",
+  "score": 45
+ },
+ {
+  "t": 1793229546,
+  "cid": "0x02b77e9c1299152e664f0ac4ff6444fd280e28f15b4a65579e6c44d85b628506",
+  "title": "Hornets vs. Pistons",
+  "slug": "nba-cha-det-2026-10-28",
+  "side": "Pistons",
+  "price": 0.72,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-cha-det-2026-10-28",
+  "score": 50,
+  "result": "won"
+ },
+ {
+  "t": 1793232598,
+  "cid": "0x967a09b104b8ed32600bec74338bd5096dc8d96b845ad0b2354cc8595e7fac69",
+  "title": "Counter-Strike: B8 vs HOTU (BO3) - Tesla Cup Playoffs",
+  "slug": "cs2-b8-hotu-2026-10-29",
+  "side": "B8",
+  "price": 0.58,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-b8-hotu-2026-10-29",
+  "score": 68
+ },
+ {
+  "t": 1793232598,
+  "cid": "0x81d2499991ba8ab9fdac6c8db06573b3da6dc562075b6304453964ab033d2523",
+  "title": "Milwaukee Brewers vs. Tampa Bay Rays",
+  "slug": "mlb-mil-tb-2026-10-28",
+  "side": "Tampa Bay Rays",
+  "price": 0.4397,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "mlb-mil-tb-2026-10-28",
+  "score": 49,
+  "result": "lost"
+ },
+ {
+  "t": 1793239048,
+  "cid": "0xab9571b00f4a53fe46c1acb1e59b0885202cd7c3bb7e2347313fcebcfadd7e98",
+  "title": "76ers vs. Pacers",
+  "slug": "nba-phi-ind-2026-10-28",
+  "side": "Pacers",
+  "price": 0.01,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-phi-ind-2026-10-28",
+  "score": 48,
+  "result": "lost"
+ },
+ {
+  "t": 1793242378,
+  "cid": "0x8126317d621047fb13d508a2651eecc8d38305904671822a62309c5aabd353aa",
+  "title": "Will Marine Le Pen win the 2027 French presidential election?",
+  "slug": "next-french-presidential-election",
+  "side": "Yes",
+  "price": 0.43,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "pres-fra-2027-04-11",
+  "score": 65
  }
 ]
