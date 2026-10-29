@@ -1547,7 +1547,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "cs2-b8-hotu-2026-10-29",
-  "score": 68
+  "score": 68,
+  "result": "lost"
  },
  {
   "t": 1793232598,
@@ -1598,5 +1599,19 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 60
+ },
+ {
+  "t": 1793269355,
+  "cid": "0x8c68fb42cecf5da51ef32047c056d08423f58ca1ea2eb5156658dabcb551786b",
+  "title": "Counter-Strike: Vitality vs Natus Vincere (BO3) - PGL Masters Bucharest Playoffs",
+  "slug": "cs2-vit-navi-2026-10-29",
+  "side": "Vitality",
+  "price": 0.7223,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "cs2-vit-navi-2026-10-29",
+  "score": 33,
+  "hidden": true,
+  "result": "won"
  }
 ]
