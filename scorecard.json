@@ -1772,5 +1772,18 @@
   "cat": "sports",
   "us": "nba-cha-was-2026-10-30",
   "score": 63
+ },
+ {
+  "t": 1793371376,
+  "cid": "0xd54ab598791633e900a51014de0f74046c0340e21b0b1d809f21edfd40fd6055",
+  "title": "Counter-Strike: MOUZ vs FURIA (BO3) - PGL Masters Bucharest Playoffs",
+  "slug": "cs2-mouz-furia-2026-10-30",
+  "side": "FURIA",
+  "price": 0.41,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-mouz-furia-2026-10-30",
+  "score": 50,
+  "result": "won"
  }
 ]
