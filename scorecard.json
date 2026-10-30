@@ -228,7 +228,8 @@
   "strength": "weak",
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
-  "score": 30
+  "score": 30,
+  "result": "lost"
  },
  {
   "t": 1792518161,
@@ -794,7 +795,8 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 30,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792861326,
@@ -1261,7 +1263,8 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 30,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793029394,
@@ -1701,6 +1704,45 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 40,
+  "hidden": true
+ },
+ {
+  "t": 1793316465,
+  "cid": "0xaf4f11806bc0a8f784e463183d02be9578a47cd80b284ac471c7046be3b54641",
+  "title": "Bruins vs. Blues",
+  "slug": "nhl-bos-stl-2026-10-29",
+  "side": "Blues",
+  "price": 0.51,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nhl-bos-stl-2026-10-29",
+  "score": 33,
+  "hidden": true
+ },
+ {
+  "t": 1793317126,
+  "cid": "0x1d06cb74c42d371dd4ce3c26f239df4eaf534c6e252dc5459723f41774158223",
+  "title": "Cavaliers vs. Hawks",
+  "slug": "nba-cle-atl-2026-10-29",
+  "side": "Hawks",
+  "price": 0.52,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-cle-atl-2026-10-29",
+  "score": 44,
+  "hidden": true
+ },
+ {
+  "t": 1793324427,
+  "cid": "0x8feb2a254634f61caacbbe13abd7b9d5b30c296e66fa3666990cab540fb3d0a5",
+  "title": "Will Bitcoin dip to $70,000 in October?",
+  "slug": "what-price-will-bitcoin-hit-in-october-2026",
+  "side": "No",
+  "price": 0.948,
+  "strength": "weak",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-10",
+  "score": 30,
   "hidden": true
  }
 ]
