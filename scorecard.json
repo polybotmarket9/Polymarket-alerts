@@ -1717,7 +1717,8 @@
   "cat": "sports",
   "us": "nhl-bos-stl-2026-10-29",
   "score": 33,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793317126,
@@ -1730,7 +1731,8 @@
   "cat": "sports",
   "us": "nba-cle-atl-2026-10-29",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793324427,
@@ -1744,5 +1746,31 @@
   "us": "btc-hit-l-m-2026-10",
   "score": 30,
   "hidden": true
+ },
+ {
+  "t": 1793329331,
+  "cid": "0x92c9c48af78d045a419a6e08b1affb483ff5732cfc89902d84103f0c0ff01811",
+  "title": "Grizzlies vs. Trail Blazers",
+  "slug": "nba-mem-por-2026-10-29",
+  "side": "Trail Blazers",
+  "price": 0.7,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-mem-por-2026-10-29",
+  "score": 40,
+  "hidden": true,
+  "result": "lost"
+ },
+ {
+  "t": 1793337162,
+  "cid": "0x786477de245fa8dcb4f06619a84e02a631f2f202a6c60424612f42d85b0f5c23",
+  "title": "Hornets vs. Wizards",
+  "slug": "nba-cha-was-2026-10-30",
+  "side": "Hornets",
+  "price": 0.48,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-cha-was-2026-10-30",
+  "score": 63
  }
 ]
