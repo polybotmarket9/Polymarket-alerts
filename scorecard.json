@@ -1853,5 +1853,18 @@
   "score": 44,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1793436446,
+  "cid": "0xb11f2d5dc3d0cdc147f36e3335f3b867432ac85b0984b149af2ec3c6e9eceaa0",
+  "title": "Counter-Strike: Vitality vs MOUZ (BO3) - PGL Masters Bucharest Playoffs",
+  "slug": "cs2-vit-mouz-2026-10-31",
+  "side": "Vitality",
+  "price": 0.316,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-vit-mouz-2026-10-31",
+  "score": 45,
+  "result": "lost"
  }
 ]
