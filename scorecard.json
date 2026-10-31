@@ -1866,5 +1866,29 @@
   "us": "cs2-vit-mouz-2026-10-31",
   "score": 45,
   "result": "lost"
+ },
+ {
+  "t": 1793448006,
+  "cid": "0x4c7f0e980f85256bfa0e075a2041af89d6380e95fde6b21eaebea0d4e044bd69",
+  "title": "Counter-Strike: JiJieHao vs BASEMENT BOYS (BO3) - Circuito Retake Playoffs",
+  "slug": "cs2-jjh-bmb-2026-10-31",
+  "side": "JiJieHao",
+  "price": 0.77,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-jjh-bmb-2026-10-31",
+  "score": 60
+ },
+ {
+  "t": 1793465971,
+  "cid": "0xefb8d071c139b9279e91ef5f8fdc458eda74e842bb6cf2cc44ea2cd921493fc6",
+  "title": "Oilers vs. Islanders",
+  "slug": "nhl-edm-nyi-2026-10-31",
+  "side": "Oilers",
+  "price": 0.51,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nhl-edm-nyi-2026-10-31",
+  "score": 50
  }
 ]
