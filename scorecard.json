@@ -1785,5 +1785,67 @@
   "us": "cs2-mouz-furia-2026-10-30",
   "score": 50,
   "result": "won"
+ },
+ {
+  "t": 1793400647,
+  "cid": "0xabb1853ac856c3a9fe2abfa1eacfac1d6aa19b4bdfe00668cbd4449487ce7ccf",
+  "title": "Jets vs. Panthers",
+  "slug": "nhl-wpg-fla-2026-10-30",
+  "side": "Panthers",
+  "price": 0.67,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nhl-wpg-fla-2026-10-30",
+  "score": 55
+ },
+ {
+  "t": 1793400647,
+  "cid": "0x0e4e64e43f20f831e9ebef24a463fec18cccd8d468b9dfba7a2a5ccb41dd51d5",
+  "title": "Bulls vs. Celtics",
+  "slug": "nba-chi-bos-2026-10-30",
+  "side": "Bulls",
+  "price": 0.14,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-chi-bos-2026-10-30",
+  "score": 60
+ },
+ {
+  "t": 1793403736,
+  "cid": "0xe1ec65a06032e9c2b0955d3e623dba44279ccb5f82079a36ad93654a92b28daa",
+  "title": "Rockets vs. Mavericks",
+  "slug": "nba-hou-dal-2026-10-30",
+  "side": "Rockets",
+  "price": 0.66,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-hou-dal-2026-10-30",
+  "score": 25,
+  "hidden": true
+ },
+ {
+  "t": 1793404376,
+  "cid": "0xc20515fc903db149b46bc5eedc71d926ab719684f23c96ab9a7cff2c45921b1f",
+  "title": "Clippers vs. Timberwolves",
+  "slug": "nba-lac-min-2026-10-30",
+  "side": "Clippers",
+  "price": 0.31,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-lac-min-2026-10-30",
+  "score": 63
+ },
+ {
+  "t": 1793405018,
+  "cid": "0xde06f53391f27468f957e4b7754488e5d7748c86e12a39251479751572b06dd8",
+  "title": "Kraken vs. Flames",
+  "slug": "nhl-sea-cal-2026-10-30",
+  "side": "Flames",
+  "price": 0.5,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nhl-sea-cgy-2026-10-30",
+  "score": 44,
+  "hidden": true
  }
 ]
