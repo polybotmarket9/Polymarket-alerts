@@ -1771,7 +1771,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-cha-was-2026-10-30",
-  "score": 63
+  "score": 63,
+  "result": "lost"
  },
  {
   "t": 1793371376,
@@ -1796,7 +1797,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nhl-wpg-fla-2026-10-30",
-  "score": 55
+  "score": 55,
+  "result": "won"
  },
  {
   "t": 1793400647,
@@ -1808,7 +1810,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-chi-bos-2026-10-30",
-  "score": 60
+  "score": 60,
+  "result": "lost"
  },
  {
   "t": 1793403736,
@@ -1821,7 +1824,8 @@
   "cat": "sports",
   "us": "nba-hou-dal-2026-10-30",
   "score": 25,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1793404376,
@@ -1833,7 +1837,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-lac-min-2026-10-30",
-  "score": 63
+  "score": 63,
+  "result": "lost"
  },
  {
   "t": 1793405018,
@@ -1846,6 +1851,7 @@
   "cat": "sports",
   "us": "nhl-sea-cgy-2026-10-30",
   "score": 44,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  }
 ]
