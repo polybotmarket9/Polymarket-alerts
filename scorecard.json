@@ -1877,7 +1877,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "cs2-jjh-bmb-2026-10-31",
-  "score": 60
+  "score": 60,
+  "result": "won"
  },
  {
   "t": 1793465971,
@@ -1889,6 +1890,58 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nhl-edm-nyi-2026-10-31",
-  "score": 50
+  "score": 50,
+  "result": "won"
+ },
+ {
+  "t": 1793466927,
+  "cid": "0x0938dcb9f89b62fbc7cee027a30e24d4ec1df482369c176d6c79785c2fa6bd0c",
+  "title": "LoL: Karmine Corp vs Movistar KOI (BO3) - Worlds Group Stage",
+  "slug": "lol-kc-mkoi-2026-10-31",
+  "side": "Karmine Corp",
+  "price": 0.62,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "lol-kc-mkoi-2026-10-31",
+  "score": 50,
+  "result": "won"
+ },
+ {
+  "t": 1793470311,
+  "cid": "0x7dd681de58b43f936d0a3ff16c4bdec46eb58c46816a467e48f842246bcfbe31",
+  "title": "Trail Blazers vs. Jazz",
+  "slug": "nba-por-uta-2026-10-31",
+  "side": "Jazz",
+  "price": 0.28,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-por-uta-2026-10-31",
+  "score": 54,
+  "result": "lost"
+ },
+ {
+  "t": 1793475247,
+  "cid": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+  "title": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.5661,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 38,
+  "hidden": true
+ },
+ {
+  "t": 1793481682,
+  "cid": "0xa54108c7e2c9764f25d43aaa84a1a389a0ad27d4a7396f72e2195c32f7dca7b2",
+  "title": "76ers vs. Hornets",
+  "slug": "nba-phi-cha-2026-10-31",
+  "side": "76ers",
+  "price": 0.55,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-phi-cha-2026-10-31",
+  "score": 54
  }
 ]
