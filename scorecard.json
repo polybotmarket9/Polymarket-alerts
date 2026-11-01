@@ -84,7 +84,8 @@
   "side": "No",
   "price": 0.275,
   "strength": "weak",
-  "cat": "politics"
+  "cat": "politics",
+  "result": "lost"
  },
  {
   "t": 1792382478,
@@ -1942,6 +1943,34 @@
   "strength": "medium",
   "cat": "sports",
   "us": "nba-phi-cha-2026-10-31",
-  "score": 54
+  "score": 54,
+  "result": "won"
+ },
+ {
+  "t": 1793489250,
+  "cid": "0xb58c1695c03c0541f694686a8a77763bcfa694a5232a7326ba094c0b7efc9ef1",
+  "title": "Kings vs. Grizzlies",
+  "slug": "nba-sac-mem-2026-10-31",
+  "side": "Kings",
+  "price": 0.26,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "nba-sac-mem-2026-10-31",
+  "score": 54,
+  "result": "lost"
+ },
+ {
+  "t": 1793493014,
+  "cid": "0xd0c4ae292f951b5ced1fabbe2e6d1e3de6fe51be96f50092647fd13fa2c7ec6a",
+  "title": "Thunder vs. Rockets",
+  "slug": "nba-okc-hou-2026-10-31",
+  "side": "Rockets",
+  "price": 0.58,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-okc-hou-2026-10-31",
+  "score": 44,
+  "hidden": true,
+  "result": "won"
  }
 ]
