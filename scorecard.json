@@ -2001,5 +2001,17 @@
   "cat": "politics",
   "us": "isrpol-pm-2026-10-27",
   "score": 60
+ },
+ {
+  "t": 1793544307,
+  "cid": "0x3451162823be88866f4404fa8ea6793db33ddd30fbb2451804f83b70fd47c6c0",
+  "title": "Counter-Strike: Heroic vs B8 (BO3) - IEM Beijing Group A",
+  "slug": "cs2-hero-b8-2026-11-02",
+  "side": "B8",
+  "price": 0.38,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-hero-b8-2026-11-02",
+  "score": 65
  }
 ]
