@@ -810,7 +810,8 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 41,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1792862485,
@@ -1526,7 +1527,8 @@
   "strength": "medium",
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
-  "score": 45
+  "score": 45,
+  "result": "lost"
  },
  {
   "t": 1793229546,
@@ -1602,7 +1604,8 @@
   "strength": "medium",
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
-  "score": 60
+  "score": 60,
+  "result": "lost"
  },
  {
   "t": 1793269355,
@@ -1705,7 +1708,8 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 40,
-  "hidden": true
+  "hidden": true,
+  "result": "lost"
  },
  {
   "t": 1793316465,
@@ -1746,7 +1750,8 @@
   "cat": "crypto",
   "us": "btc-hit-l-m-2026-10",
   "score": 30,
-  "hidden": true
+  "hidden": true,
+  "result": "won"
  },
  {
   "t": 1793329331,
@@ -1972,5 +1977,29 @@
   "score": 44,
   "hidden": true,
   "result": "won"
+ },
+ {
+  "t": 1793506385,
+  "cid": "0x7ad403c3508f8e3912940fd1a913f227591145ca0614074208e0b962d5fcc422",
+  "title": "Will JD Vance win the 2028 US Presidential Election?",
+  "slug": "presidential-election-winner-2028",
+  "side": "No",
+  "price": 0.8203,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "usp-2028-11-07",
+  "score": 45
+ },
+ {
+  "t": 1793509409,
+  "cid": "0x9ed0ecc8b8589e67967d44c4420944a41b6a6806419019a1581d514174eee9b1",
+  "title": "Will Naftali Bennett be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "Yes",
+  "price": 0.061,
+  "strength": "medium",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 60
  }
 ]
