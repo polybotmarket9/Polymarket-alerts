@@ -2204,5 +2204,18 @@
   "us": "isrpol-pm-2026-10-27",
   "score": 35,
   "hidden": true
+ },
+ {
+  "t": 1793635070,
+  "cid": "0xd2295a289e6ae13eb1727274cfad9c8202e761d8a325bc423a0548b853fea926",
+  "title": "Will Bitcoin dip to $60,000 in November?",
+  "slug": "what-price-will-bitcoin-hit-in-november-2026",
+  "side": "No",
+  "price": 0.93,
+  "strength": "weak",
+  "cat": "crypto",
+  "us": "btc-hit-l-m-2026-11",
+  "score": 38,
+  "hidden": true
  }
 ]
