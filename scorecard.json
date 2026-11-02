@@ -2012,7 +2012,8 @@
   "strength": "medium",
   "cat": "sports",
   "us": "cs2-hero-b8-2026-11-02",
-  "score": 65
+  "score": 65,
+  "result": "lost"
  },
  {
   "t": 1793553038,
@@ -2163,5 +2164,44 @@
   "score": 40,
   "hidden": true,
   "result": "lost"
+ },
+ {
+  "t": 1793585154,
+  "cid": "0xefa35d30849e8a41afdfa1112ca65d682767ff237a113c191f60ef1bf88e6f13",
+  "title": "Raptors vs. Lakers",
+  "slug": "nba-tor-lal-2026-11-01",
+  "side": "Raptors",
+  "price": 0.41,
+  "strength": "weak",
+  "cat": "sports",
+  "us": "nba-tor-lal-2026-11-01",
+  "score": 44,
+  "hidden": true,
+  "result": "lost"
+ },
+ {
+  "t": 1793600282,
+  "cid": "0x6827b1ba9bf268a73ef04cbb7e0cdb6896d7fa5f7520a85e1d27d87d12798653",
+  "title": "Counter-Strike: FURIA vs FaZe (BO3) - IEM Beijing Group A",
+  "slug": "cs2-furia-faze-2026-11-02",
+  "side": "FURIA",
+  "price": 0.72,
+  "strength": "medium",
+  "cat": "sports",
+  "us": "cs2-furia-faze-2026-11-02",
+  "score": 50
+ },
+ {
+  "t": 1793600282,
+  "cid": "0xdbe93b5a701f36076a560fa4b9ba59e365a6e8e2ea6a83764640010657277ca4",
+  "title": "Will Gadi Eizenkot be the next Prime Minister of Israel?",
+  "slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+  "side": "No",
+  "price": 0.5813,
+  "strength": "weak",
+  "cat": "politics",
+  "us": "isrpol-pm-2026-10-27",
+  "score": 35,
+  "hidden": true
  }
 ]
